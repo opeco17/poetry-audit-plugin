@@ -31,11 +31,11 @@ classifiers = [
 [tool.poetry.dependencies]
 python = "^3.9"
 poetry = "^1.2.0b1dev0"
-safety = "^1.10.3"
+safety = ">1.0.0, <=1.10.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
-mypy = "^0.942"
+mypy  = "^0.942"
 flake8 = "^4.0.0"
 black = "^21.12b0"
 isort = "^5.10.0"
@@ -45,8 +45,18 @@ click = "<8.1.0"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-# [tool.poetry.plugins."poetry.plugin"]
-# poetry-audit-plugin = "poetry_audit_plugin.plugin:AuditPlugin"
+[tool.black]
+target-version = ['py39']
+line-length = 120
 
 [tool.isort]
 profile = "black"
+
+[tool.mypy]
+python_version = "3.9"
+no_strict_optional = true
+ignore_missing_imports = true
+check_untyped_defs = true
+
+[tool.poetry.plugins."poetry.application.plugin"]
+poetry-audit-plugin = "poetry_audit_plugin.plugin:AuditApplicationPlugin"
