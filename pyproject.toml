@@ -54,7 +54,6 @@ profile = "black"
 
 [tool.mypy]
 python_version = "3.9"
-no_strict_optional = true
 ignore_missing_imports = true
 check_untyped_defs = true
 

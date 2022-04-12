@@ -1,26 +1,8 @@
-from collections import namedtuple
-from typing import List
+from typing import Dict, List
 
-import safety as safety_package
-from packaging import version
 from poetry.console.commands.command import Command
-from safety import safety
 
-Package = namedtuple("Package", ["key", "version"])
-
-
-class Vulnerability(namedtuple("Vulnerability", ["name", "spec", "version", "advisory", "vuln_id"])):
-    pass
-
-
-def check_vulnerabilities(packages: List[Package]) -> List[Vulnerability]:
-    safety_version = version.parse(safety_package.__version__)
-    checker_args = {"packages": packages, "key": False, "db_mirror": False, "cached": False}
-    if safety_version >= version.parse("1.4.0"):
-        checker_args["ignore_ids"] = []
-    if safety_version >= version.parse("1.8.5"):
-        checker_args["proxy"] = {}
-    return safety.check(**checker_args)
+from poetry_audit_plugin.safety import Package, Vulnerability, check_vulnerabilities
 
 
 class AuditCommand(Command):
@@ -31,31 +13,42 @@ class AuditCommand(Command):
         self.line("<b># poetry audit report</b>")
         self.line("<info>Loading...</info>")
 
-        root = self.poetry.package.without_optional_dependency_groups()
+        locked_repo = self.poetry.locker.locked_repository(True)
         packages: List[Package] = []
-        for dependency_package in self.poetry.locker.get_project_dependency_packages(
-            project_requires=root.all_requires
-        ):
-            packages.append(Package(str(dependency_package.package.name), str(dependency_package.package.version)))
+        for locked_package in locked_repo.packages:
+            packages.append(Package(str(locked_package.name), str(locked_package.version)))
         self.line(f"<info>Scanning {len(packages)} packages...</info>")
         self.line("")
 
         vulnerabilities = check_vulnerabilities(packages)
+        max_line_lengths = self.calculate_line_length(vulnerabilities)
         for vulnerability in vulnerabilities:
             vulnerability_message = (
                 "  <fg=blue;options=bold>•</> "
-                f"Package <c1>{vulnerability.name}</c1>"
-                f"  installed <success>{vulnerability.version}</success>"
-                f"  affected <success>{vulnerability.spec}</success>"
-                f"  ID <success>{vulnerability.vuln_id}</success>"
+                f"<c1>{vulnerability.name:{max_line_lengths['name']}}</c1>"
+                f"  installed <success>{vulnerability.version:{max_line_lengths['version']}}</success>"
+                f"  affected <success>{vulnerability.spec:{max_line_lengths['spec']}}</success>"
+                f"  CVE <success>{vulnerability.cve:{max_line_lengths['cve']}}</success>"
             )
             self.line(vulnerability_message)
 
         if vulnerabilities:
             self.line("")
-            self.line(f"<error>{len(vulnerabilities)}</error> vulnerabilities found")
+            self.line(f"<error>{len(vulnerabilities)}</error> <b>vulnerabilities found</b>")
         else:
             self.line("<b>Vulnerabilities not found</b> ✨✨")
+
+    def calculate_line_length(self, vulnerabilities: List[Vulnerability]) -> Dict[str, int]:
+        keys = ["name", "version", "spec", "cve"]
+        max_line_lengths = {key: 0 for key in keys}
+        for vulnerability in vulnerabilities:
+            for key in keys:
+                max_line_length = max_line_lengths[key]
+                line_length = len(getattr(vulnerability, key))
+                if line_length > max_line_length:
+                    max_line_lengths[key] = line_length
+
+        return max_line_lengths
 
 
 def factory():
