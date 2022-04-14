@@ -1,9 +1,9 @@
-import shutil
 import json
+import shutil
 import subprocess
 from pathlib import Path
-from typing import List
 from subprocess import CompletedProcess
+from typing import List
 
 main_vulnerability = "ansible-tower-cli"
 dev_vulnerability = "ansible-runner"
