@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "vulnerabilities-in-main"
+version = "0.1.0"
+description = ""
+authors = ["opeco17 <opeco17@gmail.com>"]
+readme = "README.md"
+packages = [{include = "vulnerabilities_in_main"}]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+ansible-tower-cli = "<3.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

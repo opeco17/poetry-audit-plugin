@@ -3,4 +3,4 @@
 set -e
 set -x
 
-pytest -v -s
+poetry publish --build

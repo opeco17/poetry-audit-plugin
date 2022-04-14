@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Poetry plugin for checking security vulnerabilities in dependencies"
 authors = ["opeco17 <opeco17@gmail.com>"]
 readme = "README.md"
+repository = "https://github.com/opeco17/poetry-audit-plugin"
 packages = [{include = "poetry_audit_plugin"}]
 classifiers = [
     "Intended Audience :: Developers",
@@ -12,7 +13,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python",
-    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Build Tools",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development",
@@ -20,16 +21,16 @@ classifiers = [
     "Topic :: System :: Installation/Setup",
     "Topic :: System :: Software Distribution",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "License :: OSI Approved :: MIT License"
 ]
+keywords = ["poetry", "vulnerabilities", "security", "audit"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.7"
 poetry = "^1.2.0b1dev0"
 safety = ">1.0.0, <=1.10.3"
 
@@ -37,23 +38,20 @@ safety = ">1.0.0, <=1.10.3"
 pytest = "^5.2"
 mypy  = "^0.942"
 flake8 = "^4.0.0"
-black = "^21.12b0"
+black = "^22.3.0"
 isort = "^5.10.0"
-click = "<8.1.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
-target-version = ['py39']
 line-length = 120
 
 [tool.isort]
 profile = "black"
 
 [tool.mypy]
-python_version = "3.9"
 ignore_missing_imports = true
 check_untyped_defs = true
 

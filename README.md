@@ -1,10 +1,9 @@
 # Poetry Audit Plugin
 
-Poetry plugin for checking security vulnerabilities in dependencies.
+Poetry plugin for checking security vulnerabilities in dependencies based on [safety](https://github.com/pyupio/safety).
 
 ```
 $ poetry audit
-
 Scanning 19 packages...
 
   • ansible-runner     installed 1.1.2  affected <1.3.1   CVE PVE-2021-36995
@@ -33,3 +32,7 @@ Otherwise, if you used `pip` to install Poetry you can add the plugin packages v
 ```bash
 pip install poetry-audit-plugin
 ```
+
+## Available options
+
+* `--json`: Export the result in JSON format.

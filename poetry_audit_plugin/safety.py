@@ -1,11 +1,37 @@
-from collections import namedtuple
 from typing import Any, Dict, Iterator, List
 
 from packaging.specifiers import SpecifierSet
 from safety.safety import fetch_database
 
-Package = namedtuple("Package", ["key", "version"])
-Vulnerability = namedtuple("Vulnerability", ["name", "spec", "version", "advisory", "cve"])
+
+class Package:
+    def __init__(self, name: str, version: str) -> None:
+        self.name = name
+        self.version = version
+
+
+class VulnerabilityDetail:
+    def __init__(self, cve: str, spec: str, advisory: str) -> None:
+        self.cve = cve
+        self.spec = spec
+        self.advisory = advisory
+
+    def format(self) -> Dict[str, Any]:
+        return {"cve": self.cve, "affectedVersion": self.spec, "advisory": self.advisory}
+
+
+class Vulnerability:
+    def __init__(self, name: str, version: str, details: List[VulnerabilityDetail]) -> None:
+        self.name = name
+        self.version = version
+        self.details = details
+
+    def format(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "installedVersion": self.version,
+            "vulns": [detail.format() for detail in self.details],
+        }
 
 
 def get_vulnerable_entry(pkg_name: str, spec: str, db_full: Dict[str, Any]) -> Iterator[Dict[str, Any]]:
@@ -18,13 +44,13 @@ def get_vulnerable_entry(pkg_name: str, spec: str, db_full: Dict[str, Any]) -> I
 def check_vulnerabilities(packages: List[Package]) -> List[Vulnerability]:
     db: Dict[str, Any] = fetch_database()
     db_full: Dict[str, Any] = {}
-    vulnerable_packages = frozenset(db.keys())
-    vulnerable = []
+    vulnerable_packages: List[Vulnerability] = []
     for pkg in packages:
-        name = pkg.key.replace("_", "-").lower()
-
-        if name in vulnerable_packages:
-            for specifier in db[name]:
+        name = pkg.name.replace("_", "-").lower()
+        details: List[VulnerabilityDetail] = []
+        if name in frozenset(db.keys()):
+            specifiers: List[str] = db[name]
+            for specifier in specifiers:
                 spec_set = SpecifierSet(specifiers=specifier)
                 if spec_set.contains(pkg.version):
                     if not db_full:
@@ -34,13 +60,11 @@ def check_vulnerabilities(packages: List[Package]) -> List[Vulnerability]:
                         if cve:
                             cve = cve.split(",")[0].strip()
                         if data.get("id"):
-                            vulnerable.append(
-                                Vulnerability(
-                                    name,
-                                    specifier,
-                                    pkg.version,
-                                    data.get("advisory"),
-                                    cve,
-                                )
+                            details.append(
+                                VulnerabilityDetail(advisory=data.get("advisory", ""), cve=cve, spec=specifier)
                             )
-    return vulnerable
+
+        if details:
+            vulnerable_packages.append(Vulnerability(name=name, version=pkg.version, details=details))
+
+    return vulnerable_packages

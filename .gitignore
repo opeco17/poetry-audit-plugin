@@ -1,7 +1,8 @@
 .mypy_cache/
 env*
-poetry.lock
 dist/
 __pycache__/
 .vscode
 .venv
+/poetry.lock
+demo-project

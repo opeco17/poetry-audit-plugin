@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "no-vulnerabilities"
+version = "0.1.0"
+description = ""
+authors = ["opeco17 <opeco17@gmail.com>"]
+readme = "README.md"
+packages = [{include = "no_vulnerabilities"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+poetry-opeco17-test-plugin = "^1.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
