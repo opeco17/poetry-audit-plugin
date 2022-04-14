@@ -36,3 +36,7 @@ pip install poetry-audit-plugin
 ## Available options
 
 * `--json`: Export the result in JSON format.
+
+## License
+
+This project is licensed under the terms of the MIT license.
