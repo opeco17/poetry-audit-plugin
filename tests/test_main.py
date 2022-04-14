@@ -17,7 +17,7 @@ def copy_assets(source_name: str, testing_dir: Path) -> None:
     shutil.copytree(package_path, testing_dir)
 
 
-def run_audit(testing_dir: Path, args: List[str] = []) -> CompletedProcess[str]:
+def run_audit(testing_dir: Path, args: List[str] = []) -> CompletedProcess:
     result = subprocess.run(
         [
             "poetry",
