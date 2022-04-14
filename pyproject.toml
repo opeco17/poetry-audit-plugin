@@ -35,7 +35,7 @@ poetry = "^1.2.0b1"
 safety = ">1.0.0, <=1.10.3"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+pytest = "^6.2"
 mypy  = "^0.942"
 flake8 = "^4.0.0"
 black = "^22.3.0"
