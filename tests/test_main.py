@@ -39,6 +39,7 @@ def test_no_vulnerabilities_basic_report(tmp_path: Path) -> None:
 
     assert "poetry audit report" in result.stdout
     assert "Vulnerabilities not found" in result.stdout
+    assert result.returncode == 0
 
 
 def test_vulnerabilities_in_main_basic_report(tmp_path: Path) -> None:
@@ -49,6 +50,7 @@ def test_vulnerabilities_in_main_basic_report(tmp_path: Path) -> None:
     assert "poetry audit report" in result.stdout
     assert main_vulnerability in result.stdout
     assert "vulnerabilities found" in result.stdout
+    assert result.returncode == 1
 
 
 def test_vulnerabilities_in_dev_basic_report(tmp_path: Path) -> None:
@@ -59,6 +61,7 @@ def test_vulnerabilities_in_dev_basic_report(tmp_path: Path) -> None:
     assert "poetry audit report" in result.stdout
     assert dev_vulnerability in result.stdout
     assert "vulnerabilities found" in result.stdout
+    assert result.returncode == 1
 
 
 def test_vulnerabilities_in_main_dev_basic_report(tmp_path: Path) -> None:
@@ -70,6 +73,7 @@ def test_vulnerabilities_in_main_dev_basic_report(tmp_path: Path) -> None:
     assert dev_vulnerability in result.stdout
     assert main_vulnerability in result.stdout
     assert "vulnerabilities found" in result.stdout
+    assert result.returncode == 1
 
 
 def test_no_vulnerabilities_json_report(tmp_path: Path) -> None:
@@ -80,6 +84,7 @@ def test_no_vulnerabilities_json_report(tmp_path: Path) -> None:
     vulnerabilitie_names = [vulnerability["name"] for vulnerability in result_dict["vulnerabilities"]]
 
     assert len(vulnerabilitie_names) == 0
+    assert result.returncode == 0
 
 
 def test_vulnerabilities_in_main_json_report(tmp_path: Path) -> None:
@@ -90,6 +95,7 @@ def test_vulnerabilities_in_main_json_report(tmp_path: Path) -> None:
     vulnerabilitie_names = [vulnerability["name"] for vulnerability in result_dict["vulnerabilities"]]
 
     assert main_vulnerability in vulnerabilitie_names
+    assert result.returncode == 1
 
 
 def test_vulnerabilities_in_dev_json_report(tmp_path: Path) -> None:
@@ -100,6 +106,7 @@ def test_vulnerabilities_in_dev_json_report(tmp_path: Path) -> None:
     vulnerabilitie_names = [vulnerability["name"] for vulnerability in result_dict["vulnerabilities"]]
 
     assert dev_vulnerability in vulnerabilitie_names
+    assert result.returncode == 1
 
 
 def test_vulnerabilities_in_main_dev_json_report(tmp_path: Path) -> None:
@@ -111,3 +118,4 @@ def test_vulnerabilities_in_main_dev_json_report(tmp_path: Path) -> None:
 
     assert dev_vulnerability in vulnerabilitie_names
     assert main_vulnerability in vulnerabilitie_names
+    assert result.returncode == 1

@@ -1,4 +1,5 @@
 import json
+import sys
 from typing import Any, Dict, List
 
 from cleo.helpers import option
@@ -50,13 +51,15 @@ class AuditCommand(Command):
                     self.line(vulnerability_message)
                     vulnerability_num += 1
 
-            if vulnerabilities:
-                self.line("")
-                self.line(
-                    f"<error>{vulnerability_num}</error> <b>vulnerabilities found in {len(vulnerabilities)} packages</b>"
-                )
-            else:
-                self.line("<b>Vulnerabilities not found</b> ✨✨")
+        if vulnerabilities:
+            self.line("")
+            self.line(
+                f"<error>{vulnerability_num}</error> <b>vulnerabilities found in {len(vulnerabilities)} packages</b>"
+            )
+            sys.exit(1)
+        else:
+            self.line("<b>Vulnerabilities not found</b> ✨✨")
+            sys.exit(0)
 
     def line(self, *args: Any, **kwargs: Any) -> None:
         if not self.is_quiet():

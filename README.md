@@ -37,6 +37,13 @@ pip install poetry-audit-plugin
 
 * `--json`: Export the result in JSON format.
 
+## Exit codes
+
+`poetry audit` will exit with a code indicating its status.
+
+* `0`: Vulnerabilities were not found.
+* `1`: One or more vulnerabilities were found.
+
 ## License
 
 This project is licensed under the terms of the MIT license.
