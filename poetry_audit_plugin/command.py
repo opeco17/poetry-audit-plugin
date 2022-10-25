@@ -23,7 +23,7 @@ class AuditCommand(Command):
         self.line("<b># poetry audit report</b>")
         self.line("<info>Loading...</info>")
 
-        locked_repo = self.poetry.locker.locked_repository(True)
+        locked_repo = self.poetry.locker.locked_repository()
         packages: List[Package] = []
         for locked_package in locked_repo.packages:
             packages.append(Package(name=str(locked_package.name), version=str(locked_package.version)))
