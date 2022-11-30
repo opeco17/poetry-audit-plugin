@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "poetry-audit-plugin"
-version = "0.1.1"
+version = "0.2.0"
 description = "Poetry plugin for checking security vulnerabilities in dependencies"
 authors = ["opeco17 <opeco17@gmail.com>"]
 readme = "README.md"
