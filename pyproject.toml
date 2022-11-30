@@ -34,7 +34,7 @@ python = "^3.7"
 poetry = "^1.2.0"
 safety = "^2.2.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^6.2"
 mypy  = "^0.942"
 black = "^22.3.0"
