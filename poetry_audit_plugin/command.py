@@ -15,6 +15,8 @@ class AuditCommand(Command):
 
     options = [
         option("json", None, "Generate a JSON payload with the information of vulnerable packages.", flag=True),
+        option("ignore-code", None, "Ignore vulnerability code", flag=False),
+        option("ignore-package", None, "Ignore packages", flag=False)
     ]
 
     def handle(self) -> None:
@@ -33,14 +35,24 @@ class AuditCommand(Command):
 
         vulnerabilities = check_vulnerabilities(packages)
         max_line_lengths = self.calculate_line_length(vulnerabilities)
-
+        ignored_vuln_amount = 0
         if self.option("json"):
             json_report = self.get_json_report(vulnerabilities)
             self.chatty_line(json_report)
         else:
             vulnerability_num = 0
             for vulnerability in vulnerabilities:
+                if self.option("ignore-package"):
+                    ignored_packages = self.option("ignore-package").split(',')
+                    if vulnerability.name in ignored_packages:
+                        ignored_vuln_amount += 1
+                        continue
                 for detail in vulnerability.details:
+                    if self.option("ignore-code"):
+                        codes = self.option("ignore-code").split(',')
+                        if detail.cve in codes:
+                            ignored_vuln_amount += 1
+                            continue
                     vulnerability_message = (
                         "  <options=bold>•</> "
                         f"<c1>{vulnerability.name:{max_line_lengths['name']}}</c1>"
@@ -50,13 +62,16 @@ class AuditCommand(Command):
                     )
                     self.line(vulnerability_message)
                     vulnerability_num += 1
-
-        if vulnerabilities:
+        final_vuln_amount = len(vulnerabilities) - ignored_vuln_amount
+        if final_vuln_amount > 0:
             self.line("")
             self.line(
-                f"<error>{vulnerability_num}</error> <b>vulnerabilities found in {len(vulnerabilities)} packages</b>"
+                f"<error>{vulnerability_num}</error> <b>vulnerabilities found in {final_vuln_amount} packages</b>"
             )
             sys.exit(1)
+        elif ignored_vuln_amount > 0:
+            self.line("<b>Vulnerabilities found but supressed</b> ✨✨")
+            sys.exit(0)
         else:
             self.line("<b>Vulnerabilities not found</b> ✨✨")
             sys.exit(0)
