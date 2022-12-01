@@ -33,26 +33,19 @@ class AuditCommand(Command):
         self.line(f"<info>Scanning {len(packages)} packages...</info>")
         self.line("")
 
-        vulnerabilities = check_vulnerabilities(packages)
+        all_vulnerabilities = check_vulnerabilities(packages)
+        vulnerabilities, amount_ignored = self.iter_vulner(all_vulnerabilities)
         max_line_lengths = self.calculate_line_length(vulnerabilities)
-        ignored_vuln_amount = 0
+        amount_vulner = len(vulnerabilities)
         if self.option("json"):
             json_report = self.get_json_report(vulnerabilities)
             self.chatty_line(json_report)
+            if amount_vulner > 0:
+                sys.exit(1)
         else:
             vulnerability_num = 0
             for vulnerability in vulnerabilities:
-                if self.option("ignore-package"):
-                    ignored_packages = self.option("ignore-package").split(',')
-                    if vulnerability.name in ignored_packages:
-                        ignored_vuln_amount += 1
-                        continue
                 for detail in vulnerability.details:
-                    if self.option("ignore-code"):
-                        codes = self.option("ignore-code").split(',')
-                        if detail.cve in codes:
-                            ignored_vuln_amount += 1
-                            continue
                     vulnerability_message = (
                         "  <options=bold>•</> "
                         f"<c1>{vulnerability.name:{max_line_lengths['name']}}</c1>"
@@ -62,19 +55,21 @@ class AuditCommand(Command):
                     )
                     self.line(vulnerability_message)
                     vulnerability_num += 1
-        final_vuln_amount = len(vulnerabilities) - ignored_vuln_amount
-        if final_vuln_amount > 0:
-            self.line("")
-            self.line(
-                f"<error>{vulnerability_num}</error> <b>vulnerabilities found in {final_vuln_amount} packages</b>"
-            )
-            sys.exit(1)
-        elif ignored_vuln_amount > 0:
-            self.line("<b>Vulnerabilities found but supressed</b> ✨✨")
-            sys.exit(0)
-        else:
-            self.line("<b>Vulnerabilities not found</b> ✨✨")
-            sys.exit(0)
+            if amount_vulner > 0:
+                self.line("")
+                self.line(
+                    f"<error>{vulnerability_num}</error> <b>vulnerabilities found in {amount_vulner} packages</b>"
+                )
+                self.line(
+                    f"<error>{amount_ignored}</error> <b>vulnerabilities found but ignored</b>"
+                )
+                sys.exit(1)
+            else:
+                self.line("<b>Vulnerabilities not found</b> ✨✨")
+                self.line(
+                    f"<error>{amount_ignored}</error> <b>vulnerabilities found but ignored</b>"
+                )
+                sys.exit(0)
 
     def line(self, *args: Any, **kwargs: Any) -> None:
         if not self.is_quiet():
@@ -146,6 +141,27 @@ class AuditCommand(Command):
         }
         return json.dumps(json_report_dict, indent=2)
 
+    def iter_vulner(self, vulnerabilities):
+        filtered = []
+        ignored_vulns = 0
+        for vulner in vulnerabilities:
+            if self.option("ignore-package"):
+                ignored_packages = self.option("ignore-package").split(',')
+                if vulner.name in ignored_packages:
+                    ignored_vulns += 1
+                    continue
+            if self.option("ignore-code"):
+                codes = self.option("ignore-code").split(',')
+                new_details = []
+                for detail in vulner.details:
+                    if detail.cve not in codes:
+                        new_details.append(detail)
+                    else:
+                        ignored_vulns += 1
+                vulner.details = new_details
+            if len(vulner.details) > 0:
+                filtered.append(vulner)
+        return filtered, ignored_vulns
 
 def factory():
     return AuditCommand()
