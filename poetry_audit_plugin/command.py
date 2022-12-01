@@ -142,14 +142,15 @@ class AuditCommand(Command):
         return json.dumps(json_report_dict, indent=2)
 
     def get_suppressions(self):
-        ignored_packages, codes = None, None
+        ignored_packages = []
+        codes = []
         if self.option("ignore-package"):
             ignored_packages = self.option("ignore-package").split(',')
         if self.option("ignore-code"):
             codes = self.option("ignore-code").split(',')
         return ignored_packages, codes
 
-    def check_details(self, vulner):
+    def check_details(self, vulner, codes):
         new_details = []
         ignored_vulns = 0
         for detail in vulner.details:
@@ -163,14 +164,17 @@ class AuditCommand(Command):
         filtered = []
         ignored_vulns = 0
         ignored_packages, codes = self.get_suppressions()
+        is_ignore_packages = self.option("ignore-package")
+        is_ignore_codes = self.option("ignore-code")
         for vulner in vulnerabilities:
-            if self.option("ignore-package"):
+            new_ignored = 0
+            if is_ignore_packages:
                 if vulner.name in ignored_packages:
                     ignored_vulns += 1
                     continue
-            if self.option("ignore-code"):
-                vulner.details, new_ignored = check_details(vulner)
-            if new_details > 0:
+            if is_ignore_codes:
+                new_ignored, vulner.details = self.check_details(vulner, codes)
+            if len(vulner.details) > 0:
                 filtered.append(vulner)
             ignored_vulns += new_ignored
         return filtered, ignored_vulns
