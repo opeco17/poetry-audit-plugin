@@ -217,3 +217,16 @@ def test_vulnerabilities_in_main_dev_json_report_with_ignoring_packages(tmp_path
     assert dev_vulnerability in vulnerabilitie_names
     assert "ansible-tower-cli" not in vulnerabilitie_names
     assert result.returncode == 1
+
+
+def test_no_vulnerabilities_in_main_json_report_with_ignoring_packages(tmp_path: Path) -> None:
+    testing_dir = tmp_path / "testing_package"
+    copy_assets("vulnerabilities_in_main", testing_dir)
+    result = run_audit(testing_dir=testing_dir, args=["--json", "--ignore-package=ansible-tower-cli"])
+    result_dict = json.loads(result.stdout)
+    vulnerabilitie_names = []
+    for vuln in result_dict["vulnerabilities"]:
+        vulnerabilitie_names.append(vuln["name"])
+
+    assert "ansible-tower-cli" not in vulnerabilitie_names
+    assert result.returncode == 0
