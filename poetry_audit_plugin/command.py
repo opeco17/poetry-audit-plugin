@@ -16,7 +16,7 @@ class AuditCommand(Command):
     options = [
         option("json", None, "Generate a JSON payload with the information of vulnerable packages.", flag=True),
         option("ignore-code", None, "Ignore vulnerability code", flag=False),
-        option("ignore-package", None, "Ignore packages", flag=False)
+        option("ignore-package", None, "Ignore packages", flag=False),
     ]
 
     def handle(self) -> None:
@@ -60,15 +60,11 @@ class AuditCommand(Command):
                 self.line(
                     f"<error>{vulnerability_num}</error> <b>vulnerabilities found in {amount_vulner} packages</b>"
                 )
-                self.line(
-                    f"<error>{amount_ignored}</error> <b>vulnerabilities found but ignored</b>"
-                )
+                self.line(f"<error>{amount_ignored}</error> <b>vulnerabilities found but ignored</b>")
                 sys.exit(1)
             else:
                 self.line("<b>Vulnerabilities not found</b> ✨✨")
-                self.line(
-                    f"<error>{amount_ignored}</error> <b>vulnerabilities found but ignored</b>"
-                )
+                self.line(f"<error>{amount_ignored}</error> <b>vulnerabilities found but ignored</b>")
                 sys.exit(0)
 
     def line(self, *args: Any, **kwargs: Any) -> None:
@@ -145,9 +141,9 @@ class AuditCommand(Command):
         ignored_packages = []
         codes = []
         if self.option("ignore-package"):
-            ignored_packages = self.option("ignore-package").split(',')
+            ignored_packages = self.option("ignore-package").split(",")
         if self.option("ignore-code"):
-            codes = self.option("ignore-code").split(',')
+            codes = self.option("ignore-code").split(",")
         return ignored_packages, codes
 
     def check_details(self, vulner, codes):
@@ -178,6 +174,7 @@ class AuditCommand(Command):
                 filtered.append(vulner)
             ignored_vulns += new_ignored
         return filtered, ignored_vulns
+
 
 def factory():
     return AuditCommand()

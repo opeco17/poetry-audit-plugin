@@ -121,34 +121,38 @@ def test_vulnerabilities_in_main_dev_json_report(tmp_path: Path) -> None:
     assert result.returncode == 1
 
 
-def test_supressed_vulnerabilities_in_main( tmp_path: Path) -> None:
+def test_vulnerabilities_code_in_main_basic_report_with_ignoring_codes(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main", testing_dir)
-    result = run_audit(testing_dir=testing_dir, args=["--ignore-code=CVE-2020-1735"])
+    result = run_audit(testing_dir=testing_dir, args=["--ignore-code=CVE-2020-1735,CVE-2020-1738"])
 
     assert "poetry audit report" in result.stdout
     assert main_vulnerability in result.stdout
     assert "vulnerabilities found in" in result.stdout
     assert "vulnerabilities found but ignored" in result.stdout
     assert "CVE-2020-1735" not in result.stdout
+    assert "CVE-2020-1738" not in result.stdout
     assert result.returncode == 1
 
-def test_supressed_vulnerabilities_in_dev( tmp_path: Path) -> None:
+
+def test_vulnerabilities_in_dev_basic_report_with_ignoring_codes(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_dev", testing_dir)
-    result = run_audit(testing_dir=testing_dir, args=["--ignore-code=CVE-2020-1735"])
+    result = run_audit(testing_dir=testing_dir, args=["--ignore-code=CVE-2020-1735,CVE-2020-1738"])
 
     assert "poetry audit report" in result.stdout
     assert dev_vulnerability in result.stdout
     assert "vulnerabilities found in" in result.stdout
     assert "vulnerabilities found but ignored" in result.stdout
     assert "CVE-2020-1735" not in result.stdout
+    assert "CVE-2020-1738" not in result.stdout
     assert result.returncode == 1
 
-def test_supressed_vulnerabilities_in_main_dev( tmp_path: Path) -> None:
+
+def test_vulnerabilities_in_main_dev_basic_report_with_ignoring_codes(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(testing_dir=testing_dir, args=["--ignore-code=CVE-2020-1735"])
+    result = run_audit(testing_dir=testing_dir, args=["--ignore-code=CVE-2020-1735,CVE-2020-1738"])
 
     assert "poetry audit report" in result.stdout
     assert dev_vulnerability in result.stdout
@@ -156,9 +160,23 @@ def test_supressed_vulnerabilities_in_main_dev( tmp_path: Path) -> None:
     assert "vulnerabilities found in" in result.stdout
     assert "vulnerabilities found but ignored" in result.stdout
     assert "CVE-2020-1735" not in result.stdout
+    assert "CVE-2020-1738" not in result.stdout
     assert result.returncode == 1
 
-def test_supressed_packages_in_main( tmp_path: Path) -> None:
+
+def test_vulnerabilities_in_main_dev_basic_report_with_ignoring_packages(tmp_path: Path) -> None:
+    testing_dir = tmp_path / "testing_package"
+    copy_assets("vulnerabilities_in_main_dev", testing_dir)
+    result = run_audit(testing_dir=testing_dir, args=["--ignore-package=ansible-tower-cli"])
+
+    assert "poetry audit report" in result.stdout
+    assert "vulnerabilities found but ignored" in result.stdout
+    assert "ansible-tower-cli" not in result.stdout
+    assert dev_vulnerability in result.stdout
+    assert result.returncode == 1
+
+
+def test_no_vulnerabilities_in_main_basic_report_with_ignoring_packages(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main", testing_dir)
     result = run_audit(testing_dir=testing_dir, args=["--ignore-package=ansible-tower-cli"])
@@ -168,43 +186,31 @@ def test_supressed_packages_in_main( tmp_path: Path) -> None:
     assert "ansible-tower-cli" not in result.stdout
     assert result.returncode == 0
 
-def test_supressed_packages_in_main_dev( tmp_path: Path) -> None:
+
+def test_vulnerabilities_in_main_dev_json_report_with_ignoring_codes(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(testing_dir=testing_dir, args=["--ignore-package=ansible-tower-cli"])
-
-    assert "poetry audit report" in result.stdout
-    assert "vulnerabilities found but ignored" in result.stdout
-    assert "ansible-tower-cli" not in result.stdout
-    assert dev_vulnerability in result.stdout
-    assert result.returncode == 1
-
-
-def test_supressed_vulnerabilities_in_main_dev_json_report(tmp_path: Path) -> None:
-    testing_dir = tmp_path / "testing_package"
-    copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(testing_dir=testing_dir, args=["--json", "--ignore-code=CVE-2020-1735"])
+    result = run_audit(testing_dir=testing_dir, args=["--json", "--ignore-code=CVE-2020-1735,CVE-2020-1738"])
     result_dict = json.loads(result.stdout)
-    vulnerabilitie_names = []
-    vulnerabilitie_cve = []
+    vulnerability_names = []
+    vulnerability_codes = []
     for vuln in result_dict["vulnerabilities"]:
-        vulnerabilitie_names.append(vuln["name"])
+        vulnerability_names.append(vuln["name"])
         for detail in vuln["vulns"]:
-            vulnerabilitie_cve.append(detail["cve"])
+            vulnerability_codes.append(detail["cve"])
 
-    assert dev_vulnerability in vulnerabilitie_names
-    assert main_vulnerability in vulnerabilitie_names
-    assert "CVE-2020-1735" not in vulnerabilitie_cve
+    assert dev_vulnerability in vulnerability_names
+    assert main_vulnerability in vulnerability_names
+    assert "CVE-2020-1735" not in vulnerability_codes
     assert result.returncode == 1
 
 
-def test_ignored_packages_in_main_dev_json_report(tmp_path: Path) -> None:
+def test_vulnerabilities_in_main_dev_json_report_with_ignoring_packages(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
     result = run_audit(testing_dir=testing_dir, args=["--json", "--ignore-package=ansible-tower-cli"])
     result_dict = json.loads(result.stdout)
     vulnerabilitie_names = []
-    vulnerabilitie_cve = []
     for vuln in result_dict["vulnerabilities"]:
         vulnerabilitie_names.append(vuln["name"])
 
