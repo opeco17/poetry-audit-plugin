@@ -15,6 +15,8 @@ class AuditCommand(Command):
 
     options = [
         option("json", None, "Generate a JSON payload with the information of vulnerable packages.", flag=True),
+        option("ignore-code", None, "Ignore vulnerability code", flag=False),
+        option("ignore-package", None, "Ignore packages", flag=False)
     ]
 
     def handle(self) -> None:
@@ -31,12 +33,15 @@ class AuditCommand(Command):
         self.line(f"<info>Scanning {len(packages)} packages...</info>")
         self.line("")
 
-        vulnerabilities = check_vulnerabilities(packages)
+        all_vulnerabilities = check_vulnerabilities(packages)
+        vulnerabilities, amount_ignored = self.iter_vulner(all_vulnerabilities)
         max_line_lengths = self.calculate_line_length(vulnerabilities)
-
+        amount_vulner = len(vulnerabilities)
         if self.option("json"):
             json_report = self.get_json_report(vulnerabilities)
             self.chatty_line(json_report)
+            if amount_vulner > 0:
+                sys.exit(1)
         else:
             vulnerability_num = 0
             for vulnerability in vulnerabilities:
@@ -50,16 +55,21 @@ class AuditCommand(Command):
                     )
                     self.line(vulnerability_message)
                     vulnerability_num += 1
-
-        if vulnerabilities:
-            self.line("")
-            self.line(
-                f"<error>{vulnerability_num}</error> <b>vulnerabilities found in {len(vulnerabilities)} packages</b>"
-            )
-            sys.exit(1)
-        else:
-            self.line("<b>Vulnerabilities not found</b> ✨✨")
-            sys.exit(0)
+            if amount_vulner > 0:
+                self.line("")
+                self.line(
+                    f"<error>{vulnerability_num}</error> <b>vulnerabilities found in {amount_vulner} packages</b>"
+                )
+                self.line(
+                    f"<error>{amount_ignored}</error> <b>vulnerabilities found but ignored</b>"
+                )
+                sys.exit(1)
+            else:
+                self.line("<b>Vulnerabilities not found</b> ✨✨")
+                self.line(
+                    f"<error>{amount_ignored}</error> <b>vulnerabilities found but ignored</b>"
+                )
+                sys.exit(0)
 
     def line(self, *args: Any, **kwargs: Any) -> None:
         if not self.is_quiet():
@@ -131,6 +141,43 @@ class AuditCommand(Command):
         }
         return json.dumps(json_report_dict, indent=2)
 
+    def get_suppressions(self):
+        ignored_packages = []
+        codes = []
+        if self.option("ignore-package"):
+            ignored_packages = self.option("ignore-package").split(',')
+        if self.option("ignore-code"):
+            codes = self.option("ignore-code").split(',')
+        return ignored_packages, codes
+
+    def check_details(self, vulner, codes):
+        new_details = []
+        ignored_vulns = 0
+        for detail in vulner.details:
+            if detail.cve not in codes:
+                new_details.append(detail)
+            else:
+                ignored_vulns += 1
+        return ignored_vulns, new_details
+
+    def iter_vulner(self, vulnerabilities):
+        filtered = []
+        ignored_vulns = 0
+        ignored_packages, codes = self.get_suppressions()
+        is_ignore_packages = self.option("ignore-package")
+        is_ignore_codes = self.option("ignore-code")
+        for vulner in vulnerabilities:
+            new_ignored = 0
+            if is_ignore_packages:
+                if vulner.name in ignored_packages:
+                    ignored_vulns += 1
+                    continue
+            if is_ignore_codes:
+                new_ignored, vulner.details = self.check_details(vulner, codes)
+            if len(vulner.details) > 0:
+                filtered.append(vulner)
+            ignored_vulns += new_ignored
+        return filtered, ignored_vulns
 
 def factory():
     return AuditCommand()

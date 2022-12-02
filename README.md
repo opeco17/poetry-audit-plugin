@@ -37,6 +37,15 @@ pip install poetry-audit-plugin
 
 * `--json`: Export the result in JSON format.
 
+* `--ignore-code`: Ignore some vulnerabilities IDs. Receive a list of IDs. For example:
+```bash
+poetry audit --ignore-code=CVE-2022-42969,CVE-2020-10684
+```
+
+* `--ignore-package`: Ignore some packages. Receive a list of packages. For example:
+```bash
+poetry audit --json --ignore-package=py,ansible-tower-cli
+```
 ## Exit codes
 
 `poetry audit` will exit with a code indicating its status.
