@@ -6,7 +6,12 @@ from cleo.helpers import option
 from poetry.console.commands.command import Command
 
 from poetry_audit_plugin import __version__
-from poetry_audit_plugin.safety import Package, Vulnerability, check_vulnerabilities
+from poetry_audit_plugin.safety import (
+    Package,
+    VulnerablePackage,
+    check_vulnerable_packages,
+    suppress_vulnerable_packages,
+)
 
 
 class AuditCommand(Command):
@@ -15,11 +20,13 @@ class AuditCommand(Command):
 
     options = [
         option("json", None, "Generate a JSON payload with the information of vulnerable packages.", flag=True),
-        option("ignore-code", None, "Ignore vulnerability code", flag=False),
-        option("ignore-package", None, "Ignore packages", flag=False)
+        option("ignore-code", None, "Ignore specified vulnerability codes", flag=False),
+        option("ignore-package", None, "Ignore specified packages", flag=False),
     ]
 
     def handle(self) -> None:
+        self.is_quiet = self.option("json")
+
         self.validate_lock_file()
 
         self.line("<b># poetry audit report</b>")
@@ -33,50 +40,59 @@ class AuditCommand(Command):
         self.line(f"<info>Scanning {len(packages)} packages...</info>")
         self.line("")
 
-        all_vulnerabilities = check_vulnerabilities(packages)
-        vulnerabilities, amount_ignored = self.iter_vulner(all_vulnerabilities)
-        max_line_lengths = self.calculate_line_length(vulnerabilities)
-        amount_vulner = len(vulnerabilities)
+        all_vulnerable_packages = check_vulnerable_packages(packages)
+
+        ignored_packages: List[str] = self.option("ignore-package").split(",") if self.option("ignore-package") else []
+        ignored_codes: List[str] = self.option("ignore-code").split(",") if self.option("ignore-code") else []
+        is_ignore = bool(len(ignored_packages) or len(ignored_codes))
+        vulnerable_packages, amount_of_ignored_vulnerabilities = suppress_vulnerable_packages(
+            all_vulnerable_packages, ignored_packages, ignored_codes
+        )
+
+        max_line_lengths = self.calculate_line_length(vulnerable_packages)
+        amount_of_vulnerable_packages = len(vulnerable_packages)
         if self.option("json"):
-            json_report = self.get_json_report(vulnerabilities)
+            json_report = self.get_json_report(vulnerable_packages)
             self.chatty_line(json_report)
-            if amount_vulner > 0:
+            if amount_of_vulnerable_packages > 0:
                 sys.exit(1)
         else:
-            vulnerability_num = 0
-            for vulnerability in vulnerabilities:
-                for detail in vulnerability.details:
+            amount_of_vulnerabilities = 0
+            for vulnerable_package in vulnerable_packages:
+                for vulnerability in vulnerable_package.vulnerabilities:
                     vulnerability_message = (
                         "  <options=bold>•</> "
-                        f"<c1>{vulnerability.name:{max_line_lengths['name']}}</c1>"
-                        f"  installed <success>{vulnerability.version:{max_line_lengths['version']}}</success>"
-                        f"  affected <success>{detail.spec:{max_line_lengths['spec']}}</success>"
-                        f"  CVE <success>{detail.cve:{max_line_lengths['cve']}}</success>"
+                        f"<c1>{vulnerable_package.name:{max_line_lengths['name']}}</c1>"
+                        f"  installed <success>{vulnerable_package.version:{max_line_lengths['version']}}</success>"
+                        f"  affected <success>{vulnerability.spec:{max_line_lengths['spec']}}</success>"
+                        f"  CVE <success>{vulnerability.cve:{max_line_lengths['cve']}}</success>"
                     )
                     self.line(vulnerability_message)
-                    vulnerability_num += 1
-            if amount_vulner > 0:
+                    amount_of_vulnerabilities += 1
+
+            if amount_of_vulnerable_packages > 0:
                 self.line("")
+
+            if is_ignore:
                 self.line(
-                    f"<error>{vulnerability_num}</error> <b>vulnerabilities found in {amount_vulner} packages</b>"
+                    f"<error>{amount_of_ignored_vulnerabilities}</error> <b>vulnerabilities found but ignored</b>"
                 )
+
+            if amount_of_vulnerable_packages > 0:
                 self.line(
-                    f"<error>{amount_ignored}</error> <b>vulnerabilities found but ignored</b>"
+                    f"<error>{amount_of_vulnerabilities}</error> <b>vulnerabilities found in {amount_of_vulnerable_packages} packages</b>"
                 )
                 sys.exit(1)
             else:
                 self.line("<b>Vulnerabilities not found</b> ✨✨")
-                self.line(
-                    f"<error>{amount_ignored}</error> <b>vulnerabilities found but ignored</b>"
-                )
                 sys.exit(0)
 
     def line(self, *args: Any, **kwargs: Any) -> None:
-        if not self.is_quiet():
+        if not self.is_quiet:
             super().line(*args, **kwargs)
 
     def line_error(self, *args: Any, **kwargs: Any) -> None:
-        if not self.is_quiet():
+        if not self.is_quiet:
             super().line_error(*args, **kwargs)
 
     def chatty_line(self, *args: Any, **kwargs: Any) -> None:
@@ -84,11 +100,6 @@ class AuditCommand(Command):
 
     def chatty_line_error(self, *args: Any, **kwargs: Any) -> None:
         super().line(*args, **kwargs)
-
-    def is_quiet(self) -> bool:
-        if self.option("json"):
-            return True
-        return False
 
     def validate_lock_file(self) -> None:
         locker = self.poetry.locker
@@ -109,16 +120,16 @@ class AuditCommand(Command):
             )
             self.line("")
 
-    def calculate_line_length(self, vulnerabilities: List[Vulnerability]) -> Dict[str, int]:
+    def calculate_line_length(self, vulnerable_packages: List[VulnerablePackage]) -> Dict[str, int]:
         keys = ["name", "version", "spec", "cve"]
         max_line_lengths = {key: 0 for key in keys}
-        for vulnerability in vulnerabilities:
-            for detail in vulnerability.details:
+        for vulnerable_package in vulnerable_packages:
+            for vulnerability in vulnerable_package.vulnerabilities:
                 for key in keys:
-                    if getattr(vulnerability, key, None):
-                        line_length = len(getattr(vulnerability, key))
+                    if getattr(vulnerable_package, key, None):
+                        line_length = len(getattr(vulnerable_package, key))
                     else:
-                        line_length = len(getattr(detail, key))
+                        line_length = len(getattr(vulnerability, key))
 
                     max_line_length = max_line_lengths[key]
                     if line_length > max_line_length:
@@ -126,11 +137,11 @@ class AuditCommand(Command):
 
         return max_line_lengths
 
-    def get_json_report(self, vulnerabilities: List[Vulnerability]) -> str:
+    def get_json_report(self, vulnerable_packages: List[VulnerablePackage]) -> str:
         locker = self.poetry.locker
-        formatted_vulnerabilities = [vulnerability.format() for vulnerability in vulnerabilities]
+        formatted_vulnerable_packages = [vulnerable_package.format() for vulnerable_package in vulnerable_packages]
         json_report_dict = {
-            "vulnerabilities": formatted_vulnerabilities,
+            "vulnerabilities": formatted_vulnerable_packages,
             "metadata": {
                 "auditVersion": __version__,
                 "poetry.lock": {
@@ -141,43 +152,6 @@ class AuditCommand(Command):
         }
         return json.dumps(json_report_dict, indent=2)
 
-    def get_suppressions(self):
-        ignored_packages = []
-        codes = []
-        if self.option("ignore-package"):
-            ignored_packages = self.option("ignore-package").split(',')
-        if self.option("ignore-code"):
-            codes = self.option("ignore-code").split(',')
-        return ignored_packages, codes
-
-    def check_details(self, vulner, codes):
-        new_details = []
-        ignored_vulns = 0
-        for detail in vulner.details:
-            if detail.cve not in codes:
-                new_details.append(detail)
-            else:
-                ignored_vulns += 1
-        return ignored_vulns, new_details
-
-    def iter_vulner(self, vulnerabilities):
-        filtered = []
-        ignored_vulns = 0
-        ignored_packages, codes = self.get_suppressions()
-        is_ignore_packages = self.option("ignore-package")
-        is_ignore_codes = self.option("ignore-code")
-        for vulner in vulnerabilities:
-            new_ignored = 0
-            if is_ignore_packages:
-                if vulner.name in ignored_packages:
-                    ignored_vulns += 1
-                    continue
-            if is_ignore_codes:
-                new_ignored, vulner.details = self.check_details(vulner, codes)
-            if len(vulner.details) > 0:
-                filtered.append(vulner)
-            ignored_vulns += new_ignored
-        return filtered, ignored_vulns
 
 def factory():
     return AuditCommand()
