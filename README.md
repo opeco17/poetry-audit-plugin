@@ -53,6 +53,37 @@ poetry audit --json --ignore-package=py,ansible-tower-cli
 * `0`: Vulnerabilities were not found.
 * `1`: One or more vulnerabilities were found.
 
+## Develop poetry-audit-plugin
+
+You can read this document to setup an environment to develop poetry-audit-plugin.
+
+First step is to install Poetry. Please read [official document](https://python-poetry.org/docs/) and install Poetry in your machine.
+
+Then, you can install dependencies of poetry-audit-plugin with the following command.
+
+```sh
+poetry install
+```
+
+Once you've done it, you can start developing poetry-audit-plugin. You can use test assets for the testing.
+
+```sh
+cd tests/assets/no_vulnerabilities
+poetry audit
+```
+
+Please lint, format, and test your changes before creating pull request to keep the quality.
+
+```sh
+./scripts/lint.sh
+./scripts/format.sh
+./scripts/test.sh
+```
+
+## Contribution
+
+Help is always appreciated. Please feel free to create issue and pull request!
+
 ## License
 
 This project is licensed under the terms of the MIT license.
