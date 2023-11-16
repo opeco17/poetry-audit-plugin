@@ -2,7 +2,7 @@
 
 Poetry plugin for checking security vulnerabilities in dependencies based on [safety](https://github.com/pyupio/safety).
 
-```
+```text
 $ poetry audit
 Scanning 19 packages...
 
@@ -15,7 +15,7 @@ Scanning 19 packages...
 
 ## Installation
 
-The easiest way to install the `export` plugin is via the `plugin add` command of Poetry.
+The easiest way to install the `audit` plugin is via the `plugin add` command of Poetry.
 
 ```bash
 poetry plugin add poetry-audit-plugin
@@ -46,9 +46,20 @@ poetry audit --ignore-code=CVE-2022-42969,CVE-2020-10684
 ```bash
 poetry audit --json --ignore-package=py,ansible-tower-cli
 ```
+
+* `--cache-db`: [Cache](https://github.com/pyupio/safety/blob/8b8a4039a7ed7d8b192e1d7175c7d2e0899cce33/safety/constants.py#L20) vulnerability database locally in `~/.safety/cache.json` --> default: `false`
+```bash
+poetry audit --cache-db true
+```
+
+* `--telemetry`: Toggle transmission of [telemetry](https://github.com/pyupio/safety/blob/8b8a4039a7ed7d8b192e1d7175c7d2e0899cce33/safety/util.py#L189) data by `safety` module --> default: `false`
+```bash
+poetry audit --telemetry true
+```
+
 ## Exit codes
 
-`poetry audit` will exit with a code indicating its status.
+`poetry audit` will exit with a code indicating it's status.
 
 * `0`: Vulnerabilities were not found.
 * `1`: One or more vulnerabilities were found.
