@@ -20,12 +20,16 @@ class AuditCommand(Command):
 
     options = [
         option("json", None, "Generate a JSON payload with the information of vulnerable packages.", flag=True),
-        option("ignore-code", None, "Ignore specified vulnerability codes", flag=False),
-        option("ignore-package", None, "Ignore specified packages", flag=False),
+        option("ignore-code", None, "Ignore specified vulnerability codes.", flag=False),
+        option("ignore-package", None, "Ignore specified packages.", flag=False),
+        option("cache-db", None, "Cache vulnerability database locally.", flag=False, default=False),
+        option("telemetry", None, "Activate telemetry of safety module.", flag=False, default=False),
     ]
 
     def handle(self) -> None:
         self.is_quiet = self.option("json")
+        self.cache_db = self.option("cache-db")
+        self.telemetry = self.option("telemetry")
 
         self.validate_lock_file()
 
@@ -40,7 +44,7 @@ class AuditCommand(Command):
         self.line(f"<info>Scanning {len(packages)} packages...</info>")
         self.line("")
 
-        all_vulnerable_packages = check_vulnerable_packages(packages)
+        all_vulnerable_packages = check_vulnerable_packages(packages, self.cache_db, self.telemetry)
 
         ignored_packages: List[str] = self.option("ignore-package").split(",") if self.option("ignore-package") else []
         ignored_codes: List[str] = self.option("ignore-code").split(",") if self.option("ignore-code") else []
@@ -84,7 +88,7 @@ class AuditCommand(Command):
                 )
                 sys.exit(1)
             else:
-                self.line("<b>Vulnerabilities not found</b> ✨✨")
+                self.line("<b>No vulnerabilities found</b> ✨✨")
                 sys.exit(0)
 
     def line(self, *args: Any, **kwargs: Any) -> None:

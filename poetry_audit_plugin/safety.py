@@ -41,10 +41,16 @@ def get_vulnerable_entry(pkg_name: str, spec: str, db_full: Dict[str, Any]) -> I
                 yield entry
 
 
-def check_vulnerable_packages(packages: List[Package]) -> List[VulnerablePackage]:
-    db: Dict[str, Any] = fetch_database()
+def check_vulnerable_packages(packages: List[Package], cache_db: bool, telemetry: bool) -> List[VulnerablePackage]:
+    cache_secs = 0
+    if str(cache_db).lower() == "true":
+        # cache database for 1 hour
+        cache_secs = 3600
+
+    db: Dict[str, Any] = fetch_database(cached=cache_secs, telemetry=telemetry)
     db_full: Dict[str, Any] = {}
     vulnerable_packages: List[VulnerablePackage] = []
+
     for pkg in packages:
         name = pkg.name.replace("_", "-").lower()
         vulnerabilities: List[Vulnerability] = []
@@ -54,7 +60,7 @@ def check_vulnerable_packages(packages: List[Package]) -> List[VulnerablePackage
                 spec_set = SpecifierSet(specifiers=specifier)
                 if spec_set.contains(pkg.version):
                     if not db_full:
-                        db_full = fetch_database(full=True)
+                        db_full = fetch_database(full=True, cached=cache_secs, telemetry=telemetry)
                     for data in get_vulnerable_entry(pkg_name=name, spec=specifier, db_full=db_full):
                         cve = data.get("cve")
                         if cve:
@@ -95,7 +101,7 @@ def suppress_vulnerable_packages(
                 else:
                     amount_of_ignored_vulnerabilities += 1
 
-            if len(filtered_vulnerabilities):
+            if len(filtered_vulnerabilities) > 0:
                 vulnerable_package.vulnerabilities = filtered_vulnerabilities
             else:
                 continue
