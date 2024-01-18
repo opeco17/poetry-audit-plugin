@@ -32,7 +32,7 @@ keywords = ["poetry", "vulnerabilities", "security", "audit"]
 [tool.poetry.dependencies]
 python = "^3.8"
 poetry = "^1.7.1"
-safety = "^2.3.5"
+safety = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"
