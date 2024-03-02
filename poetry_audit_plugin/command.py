@@ -105,7 +105,7 @@ class AuditCommand(Command):
         locker = self.poetry.locker
         if not locker.is_locked():
             self.line_error("<comment>The lock file does not exist. Locking.</comment>")
-            option = "quiet" if self.is_quiet() else None
+            option = "quiet" if self.is_quiet else None
             self.call("lock", option)
             self.line("")
 
