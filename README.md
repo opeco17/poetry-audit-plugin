@@ -15,7 +15,7 @@ Scanning 19 packages...
 
 ## Installation
 
-The easiest way to install the `export` plugin is via the `plugin add` command of Poetry.
+The easiest way to install the `audit` plugin is via the `plugin add` command of Poetry.
 
 ```bash
 poetry plugin add poetry-audit-plugin

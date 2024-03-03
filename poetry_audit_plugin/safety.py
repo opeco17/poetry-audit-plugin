@@ -68,7 +68,6 @@ def check_vulnerable_packages(session: Any, packages: List[Package]) -> List[Vul
     """
     # Ref: https://github.com/pyupio/safety/blob/2.3.5/safety/safety.py#L320
     # Ref: https://github.com/pyupio/safety/blob/3.0.1/safety/scan/finder/handlers.py#L50
-    # TODO: Pass auth key, proxy, etc. to build_client_session function for advanced safety usage.
     try:
         db: Dict[str, Dict[str, Any]] = fetch_database(
             session, full=False, db=False, cached=0, telemetry=True, from_cache=False

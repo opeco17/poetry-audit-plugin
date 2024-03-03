@@ -87,6 +87,7 @@ class AuditCommand(Command):
         ignored_codes: List[str] = self.option("ignore-code").split(",") if self.option("ignore-code") else []
         is_ignore = bool(len(ignored_packages) or len(ignored_codes))
         try:
+            # TODO: Pass auth key to build_client_session function for advanced safety usage.
             session = build_safety_db_session(
                 proxy_protocol=self.option("proxy-protocol"),
                 proxy_host=self.option("proxy-host"),
