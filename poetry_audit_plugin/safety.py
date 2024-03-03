@@ -88,11 +88,11 @@ def check_vulnerable_packages(session: Any, packages: List[Package]) -> List[Vul
                 spec_set = SpecifierSet(specifiers=specifier)
                 if spec_set.contains(pkg.version):
                     for entry in get_vulnerable_entry(pkg_name=name, spec=specifier, db_full=db_full):
-                        cve = [each for each in entry.get("ids", []) if each["type"] == "cve"]
-                        if cve and cve[0].get("id"):
-                            vulnerabilities.append(
-                                Vulnerability(advisory=entry.get("advisory", ""), cve=cve[0]["id"], spec=specifier)
-                            )
+                        for cve in entry.get("ids", []):
+                            if cve.get("type") in ["cve", "pve"] and cve.get("id"):
+                                vulnerabilities.append(
+                                    Vulnerability(advisory=entry.get("advisory", ""), cve=cve["id"], spec=specifier)
+                                )
 
         if vulnerabilities:
             vulnerable_packages.append(

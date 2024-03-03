@@ -145,7 +145,7 @@ class AuditCommand(Command):
                 )
                 sys.exit(EXIT_CODE_VULNERABILITY_FOUND)
             else:
-                self.line("<b>Vulnerabilities not found</b> ✨✨")
+                self.line("<b>No vulnerabilities found</b> ✨✨")
                 sys.exit(EXIT_CODE_OK)
 
     def line(self, *args: Any, **kwargs: Any) -> None:
