@@ -1,16 +1,24 @@
+import copy
 import json
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from cleo.helpers import option
 from poetry.console.commands.command import Command
 
 from poetry_audit_plugin import __version__
+from poetry_audit_plugin.constants import (
+    EXIT_CODE_OK,
+    EXIT_CODE_OPTION_INVALID,
+    EXIT_CODE_VULNERABILITY_FOUND,
+)
+from poetry_audit_plugin.errors import SafetyDBAccessError, SafetyDBSessionBuildError
 from poetry_audit_plugin.safety import (
     Package,
+    Vulnerability,
     VulnerablePackage,
+    build_safety_db_session,
     check_vulnerable_packages,
-    suppress_vulnerable_packages,
 )
 
 
@@ -19,17 +27,52 @@ class AuditCommand(Command):
     description = "Check vulnerabilities in dependencies"
 
     options = [
-        option("json", None, "Generate a JSON payload with the information of vulnerable packages.", flag=True),
-        option("ignore-code", None, "Ignore specified vulnerability codes", flag=False),
-        option("ignore-package", None, "Ignore specified packages", flag=False),
+        option(
+            long_name="json",
+            description="Generate a JSON payload with the information of vulnerable packages.",
+            flag=True,
+        ),
+        option(
+            long_name="ignore-code",
+            description="Ignore specified vulnerability codes.",
+            flag=False,
+        ),
+        option(
+            long_name="ignore-package",
+            description="Ignore specified packages.",
+            flag=False,
+        ),
+        option(
+            long_name="proxy-protocol",
+            description="Protocol of proxy to access Safety DB.",
+            flag=False,
+            value_required=False,
+            default="http",
+        ),
+        option(
+            long_name="proxy-host",
+            description="Host of proxy to access Safety DB.",
+            flag=False,
+            value_required=False,
+        ),
+        option(
+            long_name="proxy-port",
+            description="Port of proxy to access Safety DB.",
+            flag=False,
+            value_required=False,
+            default="80",
+        ),
     ]
 
     def handle(self) -> None:
         self.is_quiet = self.option("json")
 
+        self.line("<b># poetry audit report</b>")
+        self.line("")
+
+        self.validate_options()
         self.validate_lock_file()
 
-        self.line("<b># poetry audit report</b>")
         self.line("<info>Loading...</info>")
 
         locked_repo = self.poetry.locker.locked_repository()
@@ -40,14 +83,29 @@ class AuditCommand(Command):
         self.line(f"<info>Scanning {len(packages)} packages...</info>")
         self.line("")
 
-        all_vulnerable_packages = check_vulnerable_packages(packages)
-
         ignored_packages: List[str] = self.option("ignore-package").split(",") if self.option("ignore-package") else []
         ignored_codes: List[str] = self.option("ignore-code").split(",") if self.option("ignore-code") else []
         is_ignore = bool(len(ignored_packages) or len(ignored_codes))
-        vulnerable_packages, amount_of_ignored_vulnerabilities = suppress_vulnerable_packages(
-            all_vulnerable_packages, ignored_packages, ignored_codes
-        )
+        try:
+            session = build_safety_db_session(
+                proxy_protocol=self.option("proxy-protocol"),
+                proxy_host=self.option("proxy-host"),
+                proxy_port=int(self.option("proxy-port")) if self.option("proxy-port") else None,
+            )
+        except SafetyDBSessionBuildError as e:
+            self.chatty_line_error(f"<error>Error occured while building Safety DB session.</error>")
+            self.chatty_line_error("")
+            self.chatty_line_error(str(e))
+            sys.exit(e.get_exit_code())
+        try:
+            vulnerable_packages, amount_of_ignored_vulnerabilities = self.filter_vulnerable_packages(
+                check_vulnerable_packages(session, packages), ignored_packages, ignored_codes
+            )
+        except SafetyDBAccessError as e:
+            self.chatty_line_error(f"<error>Error occured while accessing Safety DB.</error>")
+            self.chatty_line_error("")
+            self.chatty_line_error(str(e))
+            sys.exit(e.get_exit_code())
 
         max_line_lengths = self.calculate_line_length(vulnerable_packages)
         amount_of_vulnerable_packages = len(vulnerable_packages)
@@ -55,7 +113,9 @@ class AuditCommand(Command):
             json_report = self.get_json_report(vulnerable_packages)
             self.chatty_line(json_report)
             if amount_of_vulnerable_packages > 0:
-                sys.exit(1)
+                sys.exit(EXIT_CODE_VULNERABILITY_FOUND)
+            else:
+                sys.exit(EXIT_CODE_OK)
         else:
             amount_of_vulnerabilities = 0
             for vulnerable_package in vulnerable_packages:
@@ -82,10 +142,10 @@ class AuditCommand(Command):
                 self.line(
                     f"<error>{amount_of_vulnerabilities}</error> <b>vulnerabilities found in {amount_of_vulnerable_packages} packages</b>"
                 )
-                sys.exit(1)
+                sys.exit(EXIT_CODE_VULNERABILITY_FOUND)
             else:
                 self.line("<b>Vulnerabilities not found</b> ✨✨")
-                sys.exit(0)
+                sys.exit(EXIT_CODE_OK)
 
     def line(self, *args: Any, **kwargs: Any) -> None:
         if not self.is_quiet:
@@ -99,13 +159,31 @@ class AuditCommand(Command):
         super().line(*args, **kwargs)
 
     def chatty_line_error(self, *args: Any, **kwargs: Any) -> None:
-        super().line(*args, **kwargs)
+        super().line_error(*args, **kwargs)
+
+    def validate_options(self) -> None:
+        errors: List[str] = []
+        if self.option("proxy-host") and (not self.option("proxy-protocol") or not self.option("proxy-port")):
+            errors.append("proxy-protocol and proxy-port should not be empty when proxy-host is specified.")
+
+        if self.option("proxy-protocol") and (self.option("proxy-protocol") not in ["http", "https"]):
+            errors.append("proxy-protocol should be http or https.")
+
+        if self.option("proxy-port") and not self.option("proxy-port").isnumeric():
+            errors.append("proxy-port should be number.")
+
+        if errors:
+            self.chatty_line_error("<error>Command line option(s) are invalid</error>")
+            for error in errors:
+                self.chatty_line_error(error)
+            sys.exit(EXIT_CODE_OPTION_INVALID)
 
     def validate_lock_file(self) -> None:
+        # Ref: https://github.com/python-poetry/poetry/blob/1.2.0b1/src/poetry/console/commands/export.py#L40
         locker = self.poetry.locker
         if not locker.is_locked():
             self.line_error("<comment>The lock file does not exist. Locking.</comment>")
-            option = "quiet" if self.is_quiet() else None
+            option = "quiet" if self.is_quiet else None
             self.call("lock", option)
             self.line("")
 
@@ -131,8 +209,7 @@ class AuditCommand(Command):
                     else:
                         line_length = len(getattr(vulnerability, key))
 
-                    max_line_length = max_line_lengths[key]
-                    if line_length > max_line_length:
+                    if line_length > max_line_lengths[key]:
                         max_line_lengths[key] = line_length
 
         return max_line_lengths
@@ -151,6 +228,39 @@ class AuditCommand(Command):
             },
         }
         return json.dumps(json_report_dict, indent=2)
+
+    def filter_vulnerable_packages(
+        self, vulnerable_packages: List[VulnerablePackage], ignored_packages: List[str], ignored_codes: List[str]
+    ) -> Tuple[List[VulnerablePackage], int]:
+        filtered_vulnerable_packages: List[VulnerablePackage] = []
+        amount_of_ignored_vulnerabilities = 0
+
+        is_ignore_packages = len(ignored_packages) > 0
+        is_ignore_codes = len(ignored_codes) > 0
+
+        for vulnerable_package in vulnerable_packages:
+            filtered_vulnerable_package = copy.copy(vulnerable_package)
+            if is_ignore_packages:
+                if vulnerable_package.name in ignored_packages:
+                    amount_of_ignored_vulnerabilities += len(vulnerable_package.vulnerabilities)
+                    continue
+
+            if is_ignore_codes:
+                filtered_vulnerabilities: List[Vulnerability] = []
+                for vulnerability in vulnerable_package.vulnerabilities:
+                    if vulnerability.cve not in ignored_codes:
+                        filtered_vulnerabilities.append(vulnerability)
+                    else:
+                        amount_of_ignored_vulnerabilities += 1
+
+                if len(filtered_vulnerabilities):
+                    filtered_vulnerable_package.vulnerabilities = filtered_vulnerabilities
+                else:
+                    continue
+
+            filtered_vulnerable_packages.append(filtered_vulnerable_package)
+
+        return filtered_vulnerable_packages, amount_of_ignored_vulnerabilities
 
 
 def factory():
