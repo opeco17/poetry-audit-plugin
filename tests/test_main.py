@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from subprocess import CompletedProcess
 from typing import List
+
 from poetry_audit_plugin.constants import *
 
 # At least there're following vulnerabilities in these packages.
@@ -170,9 +171,7 @@ def test_vulnerabilities_code_in_main_basic_report_with_ignoring_codes(tmp_path:
 def test_vulnerabilities_in_main_dev_basic_report_with_ignoring_codes(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(
-        testing_dir, f"--ignore-code={MAIN_VULNERABILITY_CODE1},{DEV_VULNERABILITY_CODE1}"
-    )
+    result = run_audit(testing_dir, f"--ignore-code={MAIN_VULNERABILITY_CODE1},{DEV_VULNERABILITY_CODE1}")
 
     assert "poetry audit report" in result.stdout
     assert DEV_VULNERABILITY_PACKAGE in result.stdout
@@ -203,9 +202,7 @@ def test_vulnerabilities_in_dev_basic_report_with_ignoring_codes(tmp_path: Path)
 def test_vulnerabilities_in_main_dev_json_report_with_ignoring_codes(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(
-        testing_dir, "--json", f"--ignore-code={MAIN_VULNERABILITY_CODE1},{DEV_VULNERABILITY_CODE1}"
-    )
+    result = run_audit(testing_dir, "--json", f"--ignore-code={MAIN_VULNERABILITY_CODE1},{DEV_VULNERABILITY_CODE1}")
     result_dict = json.loads(result.stdout)
     vulnerability_names: List[str] = []
     vulnerability_codes: List[str] = []
@@ -336,7 +333,7 @@ def test_no_vulnerabilities_json_report_with_valid_proxy_config(tmp_path: Path) 
     assert result.returncode == EXIT_CODE_OK
 
 
-def test_no_vulnerabilities_basic_report_with_invalid_string_proxy_port(tmp_path: Path) -> None:
+def test_no_vulnerabilities_json_report_with_invalid_string_proxy_port(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
     result = run_audit(testing_dir, "--json", "--proxy-host=localhost", "--proxy-port=string")
@@ -346,7 +343,7 @@ def test_no_vulnerabilities_basic_report_with_invalid_string_proxy_port(tmp_path
     assert result.returncode == EXIT_CODE_OPTION_INVALID
 
 
-def test_no_vulnerabilities_basic_report_with_invalid_empty_proxy_port(tmp_path: Path) -> None:
+def test_no_vulnerabilities_json_report_with_invalid_empty_proxy_port(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
     result = run_audit(testing_dir, "--json", "--proxy-host=localhost", "--proxy-port=''")
@@ -356,7 +353,7 @@ def test_no_vulnerabilities_basic_report_with_invalid_empty_proxy_port(tmp_path:
     assert result.returncode == EXIT_CODE_OPTION_INVALID
 
 
-def test_no_vulnerabilities_basic_report_with_invalid_string_proxy_protocol(tmp_path: Path) -> None:
+def test_no_vulnerabilities_json_report_with_invalid_string_proxy_protocol(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
     result = run_audit(testing_dir, "--json", "--proxy-host=localhost", "--proxy-protocol='tcp'")
@@ -366,7 +363,7 @@ def test_no_vulnerabilities_basic_report_with_invalid_string_proxy_protocol(tmp_
     assert result.returncode == EXIT_CODE_OPTION_INVALID
 
 
-def test_no_vulnerabilities_basic_report_with_invalid_empty_proxy_protocol(tmp_path: Path) -> None:
+def test_no_vulnerabilities_json_report_with_invalid_empty_proxy_protocol(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
     result = run_audit(testing_dir, "--json", "--proxy-host=localhost", "--proxy-protocol=''")
