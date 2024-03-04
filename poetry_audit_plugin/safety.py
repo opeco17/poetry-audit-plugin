@@ -85,17 +85,21 @@ def check_vulnerable_packages(session: Any, packages: List[Package], cache_sec: 
     for pkg in packages:
         name = pkg.name.replace("_", "-").lower()
         vulnerabilities: List[Vulnerability] = []
-        if name in db.get("vulnerable_packages", {}).keys():
-            specifiers: List[str] = db["vulnerable_packages"][name]
-            for specifier in specifiers:
-                spec_set = SpecifierSet(specifiers=specifier)
-                if spec_set.contains(pkg.version):
-                    for entry in get_vulnerable_entry(pkg_name=name, spec=specifier, db_full=db_full):
-                        for cve in entry.get("ids", []):
-                            if cve.get("type") in ["cve", "pve"] and cve.get("id"):
-                                vulnerabilities.append(
-                                    Vulnerability(advisory=entry.get("advisory", ""), cve=cve["id"], spec=specifier)
-                                )
+        if name not in db.get("vulnerable_packages", {}).keys():
+            continue
+
+        specifiers: List[str] = db["vulnerable_packages"][name]
+        for specifier in specifiers:
+            spec_set = SpecifierSet(specifiers=specifier)
+            if not spec_set.contains(pkg.version):
+                continue
+
+            for entry in get_vulnerable_entry(pkg_name=name, spec=specifier, db_full=db_full):
+                for cve in entry.get("ids", []):
+                    if cve.get("type") in ["cve", "pve"] and cve.get("id"):
+                        vulnerabilities.append(
+                            Vulnerability(advisory=entry.get("advisory", ""), cve=cve["id"], spec=specifier)
+                        )
 
         if vulnerabilities:
             vulnerable_packages.append(
