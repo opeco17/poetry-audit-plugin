@@ -48,6 +48,7 @@ def build_safety_db_session(
     if proxy_host and proxy_port and proxy_protocol:
         proxy_config = {"https": f"{proxy_protocol}://{proxy_host}:{str(proxy_port)}"}
     try:
+        # Note: proxy_config is ignored when it's invalid or inaccessible inside build_client_session
         session, _ = build_client_session(api_key=key, proxies=proxy_config)
     except Exception as e:
         raise SafetyDBSessionBuildError(str(e))
