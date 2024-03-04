@@ -106,12 +106,8 @@ class AuditCommand(Command):
             self.chatty_line_error(str(e))
             sys.exit(e.get_exit_code())
         try:
-            vulnerable_packages, amount_of_ignored_vulnerabilities = self.filter_vulnerable_packages(
-                check_vulnerable_packages(
-                    session, packages, int(self.option("cache-sec")) if self.option("cache-sec") else 0
-                ),
-                ignored_packages,
-                ignored_codes,
+            all_vulnerable_packages = check_vulnerable_packages(
+                session, packages, int(self.option("cache-sec")) if self.option("cache-sec") else 0
             )
         except SafetyDBAccessError as e:
             self.chatty_line_error(f"<error>Error occured while accessing Safety DB.</error>")
@@ -119,6 +115,11 @@ class AuditCommand(Command):
             self.chatty_line_error(str(e))
             sys.exit(e.get_exit_code())
 
+        vulnerable_packages, amount_of_ignored_vulnerabilities = self.filter_vulnerable_packages(
+            all_vulnerable_packages,
+            ignored_packages,
+            ignored_codes,
+        )
         max_line_lengths = self.calculate_line_length(vulnerable_packages)
         amount_of_vulnerable_packages = len(vulnerable_packages)
         if self.option("json"):
