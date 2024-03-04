@@ -23,13 +23,15 @@ def copy_assets(source_name: str, testing_dir: Path) -> None:
     shutil.copytree(package_path, testing_dir)
 
 
-def run_audit(testing_dir: Path, *args: str) -> CompletedProcess:
+def run_audit(testing_dir: Path, use_cache: bool, *args: str) -> CompletedProcess:
+    commands = [
+        "poetry",
+        "audit",
+    ] + list(args)
+    if use_cache:
+        commands.append("--cache-sec=60")
     result = subprocess.run(
-        [
-            "poetry",
-            "audit",
-        ]
-        + list(args),
+        commands,
         cwd=testing_dir,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -41,7 +43,7 @@ def run_audit(testing_dir: Path, *args: str) -> CompletedProcess:
 def test_no_vulnerabilities_basic_report(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir)
+    result = run_audit(testing_dir, True)
 
     assert "poetry audit report" in result.stdout
     assert "No vulnerabilities found" in result.stdout
@@ -51,7 +53,7 @@ def test_no_vulnerabilities_basic_report(tmp_path: Path) -> None:
 def test_vulnerabilities_in_main_basic_report(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main", testing_dir)
-    result = run_audit(testing_dir)
+    result = run_audit(testing_dir, True)
 
     assert "poetry audit report" in result.stdout
     assert MAIN_VULNERABILITY_PACKAGE in result.stdout
@@ -65,7 +67,7 @@ def test_vulnerabilities_in_main_basic_report(tmp_path: Path) -> None:
 def test_vulnerabilities_in_dev_basic_report(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_dev", testing_dir)
-    result = run_audit(testing_dir)
+    result = run_audit(testing_dir, True)
 
     assert "poetry audit report" in result.stdout
     assert DEV_VULNERABILITY_PACKAGE in result.stdout
@@ -79,7 +81,7 @@ def test_vulnerabilities_in_dev_basic_report(tmp_path: Path) -> None:
 def test_vulnerabilities_in_main_dev_basic_report(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(testing_dir)
+    result = run_audit(testing_dir, True)
 
     assert "poetry audit report" in result.stdout
     assert DEV_VULNERABILITY_PACKAGE in result.stdout
@@ -96,7 +98,7 @@ def test_vulnerabilities_in_main_dev_basic_report(tmp_path: Path) -> None:
 def test_no_vulnerabilities_json_report(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir, "--json")
+    result = run_audit(testing_dir, True, "--json")
     result_dict = json.loads(result.stdout)
     vulnerabilitie_names = [vulnerability["name"] for vulnerability in result_dict["vulnerabilities"]]
 
@@ -109,7 +111,7 @@ def test_no_vulnerabilities_json_report(tmp_path: Path) -> None:
 def test_vulnerabilities_in_main_json_report(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main", testing_dir)
-    result = run_audit(testing_dir, "--json")
+    result = run_audit(testing_dir, True, "--json")
     result_dict = json.loads(result.stdout)
     vulnerabilitie_names = [vulnerability["name"] for vulnerability in result_dict["vulnerabilities"]]
 
@@ -124,7 +126,7 @@ def test_vulnerabilities_in_main_json_report(tmp_path: Path) -> None:
 def test_vulnerabilities_in_dev_json_report(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_dev", testing_dir)
-    result = run_audit(testing_dir, "--json")
+    result = run_audit(testing_dir, True, "--json")
     result_dict = json.loads(result.stdout)
     vulnerabilitie_names = [vulnerability["name"] for vulnerability in result_dict["vulnerabilities"]]
 
@@ -139,7 +141,7 @@ def test_vulnerabilities_in_dev_json_report(tmp_path: Path) -> None:
 def test_vulnerabilities_in_main_dev_json_report(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(testing_dir, "--json")
+    result = run_audit(testing_dir, True, "--json")
     result_dict = json.loads(result.stdout)
     vulnerabilitie_names = [vulnerability["name"] for vulnerability in result_dict["vulnerabilities"]]
 
@@ -157,7 +159,7 @@ def test_vulnerabilities_in_main_dev_json_report(tmp_path: Path) -> None:
 def test_vulnerabilities_code_in_main_basic_report_with_ignoring_codes(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main", testing_dir)
-    result = run_audit(testing_dir, f"--ignore-code={MAIN_VULNERABILITY_CODE1}")
+    result = run_audit(testing_dir, True, f"--ignore-code={MAIN_VULNERABILITY_CODE1}")
 
     assert "poetry audit report" in result.stdout
     assert MAIN_VULNERABILITY_PACKAGE in result.stdout
@@ -171,7 +173,7 @@ def test_vulnerabilities_code_in_main_basic_report_with_ignoring_codes(tmp_path:
 def test_vulnerabilities_in_main_dev_basic_report_with_ignoring_codes(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(testing_dir, f"--ignore-code={MAIN_VULNERABILITY_CODE1},{DEV_VULNERABILITY_CODE1}")
+    result = run_audit(testing_dir, True, f"--ignore-code={MAIN_VULNERABILITY_CODE1},{DEV_VULNERABILITY_CODE1}")
 
     assert "poetry audit report" in result.stdout
     assert DEV_VULNERABILITY_PACKAGE in result.stdout
@@ -188,7 +190,7 @@ def test_vulnerabilities_in_main_dev_basic_report_with_ignoring_codes(tmp_path: 
 def test_vulnerabilities_in_dev_basic_report_with_ignoring_codes(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_dev", testing_dir)
-    result = run_audit(testing_dir, f"--ignore-code={DEV_VULNERABILITY_CODE1}")
+    result = run_audit(testing_dir, True, f"--ignore-code={DEV_VULNERABILITY_CODE1}")
 
     assert "poetry audit report" in result.stdout
     assert DEV_VULNERABILITY_PACKAGE in result.stdout
@@ -202,7 +204,9 @@ def test_vulnerabilities_in_dev_basic_report_with_ignoring_codes(tmp_path: Path)
 def test_vulnerabilities_in_main_dev_json_report_with_ignoring_codes(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(testing_dir, "--json", f"--ignore-code={MAIN_VULNERABILITY_CODE1},{DEV_VULNERABILITY_CODE1}")
+    result = run_audit(
+        testing_dir, True, "--json", f"--ignore-code={MAIN_VULNERABILITY_CODE1},{DEV_VULNERABILITY_CODE1}"
+    )
     result_dict = json.loads(result.stdout)
     vulnerability_names: List[str] = []
     vulnerability_codes: List[str] = []
@@ -224,7 +228,7 @@ def test_vulnerabilities_in_main_dev_json_report_with_ignoring_codes(tmp_path: P
 def test_vulnerabilities_in_main_dev_basic_report_with_ignoring_main_packages(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(testing_dir, f"--ignore-package={MAIN_VULNERABILITY_PACKAGE}")
+    result = run_audit(testing_dir, True, f"--ignore-package={MAIN_VULNERABILITY_PACKAGE}")
 
     assert "poetry audit report" in result.stdout
     assert "vulnerabilities found but ignored" in result.stdout
@@ -236,7 +240,7 @@ def test_vulnerabilities_in_main_dev_basic_report_with_ignoring_main_packages(tm
 def test_vulnerabilities_in_main_dev_basic_report_with_ignoring_dev_packages(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(testing_dir, f"--ignore-package={DEV_VULNERABILITY_PACKAGE}")
+    result = run_audit(testing_dir, True, f"--ignore-package={DEV_VULNERABILITY_PACKAGE}")
 
     assert "poetry audit report" in result.stdout
     assert "vulnerabilities found but ignored" in result.stdout
@@ -248,7 +252,7 @@ def test_vulnerabilities_in_main_dev_basic_report_with_ignoring_dev_packages(tmp
 def test_vulnerabilities_in_main_dev_json_report_with_ignoring_main_packages(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(testing_dir, "--json", f"--ignore-package={MAIN_VULNERABILITY_PACKAGE}")
+    result = run_audit(testing_dir, True, "--json", f"--ignore-package={MAIN_VULNERABILITY_PACKAGE}")
     result_dict = json.loads(result.stdout)
     vulnerabilitie_names = []
     for vuln in result_dict["vulnerabilities"]:
@@ -263,7 +267,7 @@ def test_vulnerabilities_in_main_dev_json_report_with_ignoring_main_packages(tmp
 def test_vulnerabilities_in_main_dev_json_report_with_ignoring_dev_packages(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("vulnerabilities_in_main_dev", testing_dir)
-    result = run_audit(testing_dir, "--json", f"--ignore-package={DEV_VULNERABILITY_PACKAGE}")
+    result = run_audit(testing_dir, True, "--json", f"--ignore-package={DEV_VULNERABILITY_PACKAGE}")
     result_dict = json.loads(result.stdout)
     vulnerabilitie_names = []
     for vuln in result_dict["vulnerabilities"]:
@@ -278,7 +282,7 @@ def test_vulnerabilities_in_main_dev_json_report_with_ignoring_dev_packages(tmp_
 def test_no_vulnerabilities_basic_report_with_valid_proxy_config(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir, "--proxy-protocol=http", "--proxy-host=localhost", "--proxy-port=3128")
+    result = run_audit(testing_dir, False, "--proxy-protocol=http", "--proxy-host=localhost", "--proxy-port=3128")
 
     assert "poetry audit report" in result.stdout
     assert result.returncode == EXIT_CODE_OK
@@ -287,7 +291,7 @@ def test_no_vulnerabilities_basic_report_with_valid_proxy_config(tmp_path: Path)
 def test_no_vulnerabilities_basic_report_with_invalid_string_proxy_port(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir, "--proxy-host=localhost", "--proxy-port=string")
+    result = run_audit(testing_dir, True, "--proxy-host=localhost", "--proxy-port=string")
 
     assert "poetry audit report" in result.stdout
     assert "Command line option(s) are invalid" in result.stderr
@@ -297,7 +301,7 @@ def test_no_vulnerabilities_basic_report_with_invalid_string_proxy_port(tmp_path
 def test_no_vulnerabilities_basic_report_with_invalid_empty_proxy_port(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir, "--proxy-host=localhost", "--proxy-port=''")
+    result = run_audit(testing_dir, True, "--proxy-host=localhost", "--proxy-port=''")
 
     assert "poetry audit report" in result.stdout
     assert "Command line option(s) are invalid" in result.stderr
@@ -307,7 +311,7 @@ def test_no_vulnerabilities_basic_report_with_invalid_empty_proxy_port(tmp_path:
 def test_no_vulnerabilities_basic_report_with_invalid_string_proxy_protocol(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir, "--proxy-host=localhost", "--proxy-protocol='tcp'")
+    result = run_audit(testing_dir, True, "--proxy-host=localhost", "--proxy-protocol='tcp'")
 
     assert "poetry audit report" in result.stdout
     assert "Command line option(s) are invalid" in result.stderr
@@ -317,7 +321,7 @@ def test_no_vulnerabilities_basic_report_with_invalid_string_proxy_protocol(tmp_
 def test_no_vulnerabilities_basic_report_with_invalid_empty_proxy_protocol(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir, "--proxy-host=localhost", "--proxy-protocol=''")
+    result = run_audit(testing_dir, True, "--proxy-host=localhost", "--proxy-protocol=''")
 
     assert "poetry audit report" in result.stdout
     assert "Command line option(s) are invalid" in result.stderr
@@ -327,7 +331,9 @@ def test_no_vulnerabilities_basic_report_with_invalid_empty_proxy_protocol(tmp_p
 def test_no_vulnerabilities_json_report_with_valid_proxy_config(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir, "--json", "--proxy-protocol=http", "--proxy-host=localhost", "--proxy-port=3128")
+    result = run_audit(
+        testing_dir, False, "--json", "--proxy-protocol=http", "--proxy-host=localhost", "--proxy-port=3128"
+    )
 
     assert "poetry audit report" not in result.stdout
     assert result.returncode == EXIT_CODE_OK
@@ -336,7 +342,7 @@ def test_no_vulnerabilities_json_report_with_valid_proxy_config(tmp_path: Path) 
 def test_no_vulnerabilities_json_report_with_invalid_string_proxy_port(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir, "--json", "--proxy-host=localhost", "--proxy-port=string")
+    result = run_audit(testing_dir, True, "--json", "--proxy-host=localhost", "--proxy-port=string")
 
     assert "poetry audit report" not in result.stdout
     assert "Command line option(s) are invalid" in result.stderr
@@ -346,7 +352,7 @@ def test_no_vulnerabilities_json_report_with_invalid_string_proxy_port(tmp_path:
 def test_no_vulnerabilities_json_report_with_invalid_empty_proxy_port(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir, "--json", "--proxy-host=localhost", "--proxy-port=''")
+    result = run_audit(testing_dir, True, "--json", "--proxy-host=localhost", "--proxy-port=''")
 
     assert "poetry audit report" not in result.stdout
     assert "Command line option(s) are invalid" in result.stderr
@@ -356,7 +362,7 @@ def test_no_vulnerabilities_json_report_with_invalid_empty_proxy_port(tmp_path: 
 def test_no_vulnerabilities_json_report_with_invalid_string_proxy_protocol(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir, "--json", "--proxy-host=localhost", "--proxy-protocol='tcp'")
+    result = run_audit(testing_dir, True, "--json", "--proxy-host=localhost", "--proxy-protocol='tcp'")
 
     assert "poetry audit report" not in result.stdout
     assert "Command line option(s) are invalid" in result.stderr
@@ -366,7 +372,7 @@ def test_no_vulnerabilities_json_report_with_invalid_string_proxy_protocol(tmp_p
 def test_no_vulnerabilities_json_report_with_invalid_empty_proxy_protocol(tmp_path: Path) -> None:
     testing_dir = tmp_path / "testing_package"
     copy_assets("no_vulnerabilities", testing_dir)
-    result = run_audit(testing_dir, "--json", "--proxy-host=localhost", "--proxy-protocol=''")
+    result = run_audit(testing_dir, True, "--json", "--proxy-host=localhost", "--proxy-protocol=''")
 
     assert "poetry audit report" not in result.stdout
     assert "Command line option(s) are invalid" in result.stderr

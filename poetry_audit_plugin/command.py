@@ -62,6 +62,13 @@ class AuditCommand(Command):
             value_required=False,
             default="80",
         ),
+        option(
+            long_name="cache-sec",
+            description="How long Safety DB can be cached locally.",
+            flag=False,
+            value_required=False,
+            default="0",
+        ),
     ]
 
     def handle(self) -> None:
@@ -100,7 +107,11 @@ class AuditCommand(Command):
             sys.exit(e.get_exit_code())
         try:
             vulnerable_packages, amount_of_ignored_vulnerabilities = self.filter_vulnerable_packages(
-                check_vulnerable_packages(session, packages), ignored_packages, ignored_codes
+                check_vulnerable_packages(
+                    session, packages, int(self.option("cache-sec")) if self.option("cache-sec") else 0
+                ),
+                ignored_packages,
+                ignored_codes,
             )
         except SafetyDBAccessError as e:
             self.chatty_line_error(f"<error>Error occured while accessing Safety DB.</error>")
@@ -172,6 +183,9 @@ class AuditCommand(Command):
 
         if self.option("proxy-port") and not self.option("proxy-port").isnumeric():
             errors.append("proxy-port should be number.")
+
+        if self.option("cache-sec") and not self.option("cache-sec").isnumeric():
+            errors.append("cache-sec be number")
 
         if errors:
             self.chatty_line_error("<error>Command line option(s) are invalid</error>")

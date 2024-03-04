@@ -63,18 +63,20 @@ def get_vulnerable_entry(pkg_name: str, spec: str, db_full: Dict[str, Dict[str, 
                 yield entry
 
 
-def check_vulnerable_packages(session: Any, packages: List[Package]) -> List[VulnerablePackage]:
+def check_vulnerable_packages(session: Any, packages: List[Package], cache_sec: int = 0) -> List[VulnerablePackage]:
     """
     Check vulnerabilities in given packages by checking Safety DB.
+
+    If cache_sec is not 0, Safety DB is cached in $HOME/.safety/200/ and it can be used for next scan.
     """
     # Ref: https://github.com/pyupio/safety/blob/2.3.5/safety/safety.py#L320
     # Ref: https://github.com/pyupio/safety/blob/3.0.1/safety/scan/finder/handlers.py#L50
     try:
         db: Dict[str, Dict[str, Any]] = fetch_database(
-            session, full=False, db=False, cached=0, telemetry=True, from_cache=False
+            session, full=False, db=False, cached=cache_sec, telemetry=False, from_cache=True
         )
         db_full: Dict[str, Dict[str, Any]] = fetch_database(
-            session, full=True, db=False, cached=0, telemetry=True, from_cache=False
+            session, full=True, db=False, cached=cache_sec, telemetry=False, from_cache=True
         )
     except Exception as e:
         raise SafetyDBAccessError(str(e))
