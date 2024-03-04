@@ -15,7 +15,7 @@ Scanning 19 packages...
 
 ## Installation
 
-The easiest way to install the `export` plugin is via the `plugin add` command of Poetry.
+The easiest way to install the `audit` plugin is via the `plugin add` command of Poetry.
 
 ```bash
 poetry plugin add poetry-audit-plugin
@@ -38,20 +38,36 @@ pip install poetry-audit-plugin
 * `--json`: Export the result in JSON format.
 
 * `--ignore-code`: Ignore some vulnerabilities IDs. Receive a list of IDs. For example:
+
 ```bash
 poetry audit --ignore-code=CVE-2022-42969,CVE-2020-10684
 ```
 
 * `--ignore-package`: Ignore some packages. Receive a list of packages. For example:
+
 ```bash
 poetry audit --json --ignore-package=py,ansible-tower-cli
 ```
+
+* `--proxy-protocol`, `--proxy-host`, `--proxy-port`: Proxy to access Safety DB. For example:
+
+```bash
+poetry audit --proxy-protocol=http --proxy-host=localhost --proxy-port=3128
+```
+
+* `--cache-sec`: How long Safety DB can be cached locally. For example:
+
+```bash
+poetry audit --cache-sec=60
+```
+
 ## Exit codes
 
 `poetry audit` will exit with a code indicating its status.
 
 * `0`: Vulnerabilities were not found.
 * `1`: One or more vulnerabilities were found.
+* Others: Something wrong happened.
 
 ## Develop poetry-audit-plugin
 
@@ -69,6 +85,7 @@ Once you've done it, you can start developing poetry-audit-plugin. You can use t
 
 ```sh
 cd tests/assets/no_vulnerabilities
+poetry shell
 poetry audit
 ```
 

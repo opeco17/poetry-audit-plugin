@@ -1,7 +1,10 @@
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Optional
 
 from packaging.specifiers import SpecifierSet
+from safety.auth import build_client_session
 from safety.safety import fetch_database
+
+from poetry_audit_plugin.errors import SafetyDBAccessError, SafetyDBSessionBuildError
 
 
 class Package:
@@ -34,35 +37,69 @@ class VulnerablePackage:
         }
 
 
-def get_vulnerable_entry(pkg_name: str, spec: str, db_full: Dict[str, Any]) -> Iterator[Dict[str, Any]]:
-    for entry in db_full.get(pkg_name, []):
+def build_safety_db_session(
+    key: Optional[str] = None,
+    proxy_protocol: Optional[str] = None,
+    proxy_host: Optional[str] = None,
+    proxy_port: Optional[int] = None,
+) -> Any:
+    # Ref: https://github.com/pyupio/safety/blob/3.0.1/safety/auth/cli_utils.py#L130
+    proxy_config: Optional[Dict[str, str]] = None
+    if proxy_host and proxy_port and proxy_protocol:
+        proxy_config = {"https": f"{proxy_protocol}://{proxy_host}:{str(proxy_port)}"}
+    try:
+        # Note: proxy_config is ignored when it's invalid or inaccessible inside build_client_session
+        session, _ = build_client_session(api_key=key, proxies=proxy_config)
+    except Exception as e:
+        raise SafetyDBSessionBuildError(str(e))
+
+    return session
+
+
+def get_vulnerable_entry(pkg_name: str, spec: str, db_full: Dict[str, Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
+    for entry in db_full.get("vulnerable_packages", {}).get(pkg_name, []):
         for entry_spec in entry.get("specs", []):
             if entry_spec == spec:
                 yield entry
 
 
-def check_vulnerable_packages(packages: List[Package]) -> List[VulnerablePackage]:
-    db: Dict[str, Any] = fetch_database()
-    db_full: Dict[str, Any] = {}
+def check_vulnerable_packages(session: Any, packages: List[Package], cache_sec: int = 0) -> List[VulnerablePackage]:
+    """
+    Check vulnerabilities in given packages by checking Safety DB.
+
+    If cache_sec is not 0, Safety DB is cached in $HOME/.safety/200/ and it can be used for next scan.
+    """
+    # Ref: https://github.com/pyupio/safety/blob/2.3.5/safety/safety.py#L320
+    # Ref: https://github.com/pyupio/safety/blob/3.0.1/safety/scan/finder/handlers.py#L50
+    try:
+        db: Dict[str, Dict[str, Any]] = fetch_database(
+            session, full=False, db=False, cached=cache_sec, telemetry=False, from_cache=True
+        )
+        db_full: Dict[str, Dict[str, Any]] = fetch_database(
+            session, full=True, db=False, cached=cache_sec, telemetry=False, from_cache=True
+        )
+    except Exception as e:
+        raise SafetyDBAccessError(str(e))
+
     vulnerable_packages: List[VulnerablePackage] = []
     for pkg in packages:
         name = pkg.name.replace("_", "-").lower()
         vulnerabilities: List[Vulnerability] = []
-        if name in frozenset(db.keys()):
-            specifiers: List[str] = db[name]
-            for specifier in specifiers:
-                spec_set = SpecifierSet(specifiers=specifier)
-                if spec_set.contains(pkg.version):
-                    if not db_full:
-                        db_full = fetch_database(full=True)
-                    for data in get_vulnerable_entry(pkg_name=name, spec=specifier, db_full=db_full):
-                        cve = data.get("cve")
-                        if cve:
-                            cve = cve.split(",")[0].strip()
-                        if data.get("id"):
-                            vulnerabilities.append(
-                                Vulnerability(advisory=data.get("advisory", ""), cve=cve, spec=specifier)
-                            )
+        if name not in db.get("vulnerable_packages", {}).keys():
+            continue
+
+        specifiers: List[str] = db["vulnerable_packages"][name]
+        for specifier in specifiers:
+            spec_set = SpecifierSet(specifiers=specifier)
+            if not spec_set.contains(pkg.version):
+                continue
+
+            for entry in get_vulnerable_entry(pkg_name=name, spec=specifier, db_full=db_full):
+                for cve in entry.get("ids", []):
+                    if cve.get("type") in ["cve", "pve"] and cve.get("id"):
+                        vulnerabilities.append(
+                            Vulnerability(advisory=entry.get("advisory", ""), cve=cve["id"], spec=specifier)
+                        )
 
         if vulnerabilities:
             vulnerable_packages.append(
@@ -70,36 +107,3 @@ def check_vulnerable_packages(packages: List[Package]) -> List[VulnerablePackage
             )
 
     return vulnerable_packages
-
-
-def suppress_vulnerable_packages(
-    vulnerable_packages: List[VulnerablePackage], ignored_packages: List[str], ignored_codes: List[str]
-) -> Tuple[List[VulnerablePackage], int]:
-    filtered_vulnerable_packages: List[VulnerablePackage] = []
-    amount_of_ignored_vulnerabilities = 0
-
-    is_ignore_packages = len(ignored_packages) > 0
-    is_ignore_codes = len(ignored_codes) > 0
-
-    for vulnerable_package in vulnerable_packages:
-        if is_ignore_packages:
-            if vulnerable_package.name in ignored_packages:
-                amount_of_ignored_vulnerabilities += len(vulnerable_package.vulnerabilities)
-                continue
-
-        if is_ignore_codes:
-            filtered_vulnerabilities: List[Vulnerability] = []
-            for vulnerability in vulnerable_package.vulnerabilities:
-                if vulnerability.cve not in ignored_codes:
-                    filtered_vulnerabilities.append(vulnerability)
-                else:
-                    amount_of_ignored_vulnerabilities += 1
-
-            if len(filtered_vulnerabilities):
-                vulnerable_package.vulnerabilities = filtered_vulnerabilities
-            else:
-                continue
-
-        filtered_vulnerable_packages.append(vulnerable_package)
-
-    return filtered_vulnerable_packages, amount_of_ignored_vulnerabilities
