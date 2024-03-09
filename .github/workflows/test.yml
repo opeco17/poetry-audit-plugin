@@ -36,7 +36,7 @@ jobs:
         run: echo "version=$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")" >> $GITHUB_OUTPUT
 
       - name: Bootstrap poetry
-        run: curl -sL https://install.python-poetry.org | python - -y --version {{ matrix.poetry-version }}
+        run: curl -sL https://install.python-poetry.org | python - -y --version ${{ matrix.poetry-version }}
 
       - name: Update PATH
         if: ${{ matrix.os != 'Windows' }}
