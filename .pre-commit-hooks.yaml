@@ -1,0 +1,6 @@
+- id: poetry-audit
+  name: poetry-audit
+  description: run poetry audit to check vulnerabilities in package
+  entry: poetry audit
+  language: python
+  language_version: python3
