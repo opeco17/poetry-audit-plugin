@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "poetry-audit-plugin"
-version = "0.4.0"
+version = "0.4.1"
 description = "Poetry plugin for checking security vulnerabilities in dependencies"
 authors = ["opeco17 <opeco17@gmail.com>"]
 readme = "README.md"
@@ -31,8 +31,8 @@ classifiers = [
 keywords = ["poetry", "vulnerabilities", "security", "audit"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
-poetry = "^1.6.1"
+python = "^3.9"
+poetry = "^2.0.0"
 safety = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]
