@@ -1,14 +1,14 @@
-[tool.poetry]
+[project]
 name = "no-vulnerabilities"
 version = "0.1.0"
 description = ""
-authors = ["opeco17 <opeco17@gmail.com>"]
+authors = [{ name = "opeco17", email = "opeco17@gmail.com" }]
 readme = "README.md"
 packages = [{include = "no_vulnerabilities"}]
-
-[tool.poetry.dependencies]
-python = "^3.9"
-poetry-opeco17-test-plugin = "^1.0.0"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "poetry-opeco17-test-plugin>=1.0.0,<2.0.0"
+]
 
 [build-system]
 requires = ["poetry-core"]

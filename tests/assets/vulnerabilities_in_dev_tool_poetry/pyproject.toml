@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "vulnerabilities_in_dev"}]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.12"
 
 [tool.poetry.dev-dependencies]
 ansible-runner = "<1.2.0"

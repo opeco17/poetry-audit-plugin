@@ -1,11 +1,17 @@
-[tool.poetry]
+[project]
 name = "poetry-audit-plugin"
-version = "0.3.0"
+version = "1.0.0"
 description = "Poetry plugin for checking security vulnerabilities in dependencies"
-authors = ["opeco17 <opeco17@gmail.com>"]
+authors = [{ name = "opeco17", email = "opeco17@gmail.com" }]
 readme = "README.md"
+requires-python = ">=3.9,<4.0"
 repository = "https://github.com/opeco17/poetry-audit-plugin"
-packages = [{include = "poetry_audit_plugin"}]
+dependencies = [
+    "poetry>=2.0.0,<3.0.0",
+    "poetry-core>=2.0.0,<3.0.0",
+    "safety>=3.0.0,<4.0.0",
+    "packaging>=21.0"
+]
 classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
@@ -21,28 +27,31 @@ classifiers = [
     "Topic :: System :: Installation/Setup",
     "Topic :: System :: Software Distribution",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License"
 ]
 keywords = ["poetry", "vulnerabilities", "security", "audit"]
 
-[tool.poetry.dependencies]
-python = "^3.8"
-poetry = "^1.6.1"
-safety = "^2.3.5"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^6.2.5"
-mypy  = "^0.942"
-black = "^22.12.0"
-isort = "^5.12.0"
+[project.entry-points."poetry.application.plugin"]
+audit = "poetry_audit_plugin.plugin:AuditApplicationPlugin"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=2.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [
+    { include = "poetry_audit_plugin" }
+]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+mypy = "^1.8.0"
+black = "^24.0.0"
+isort = "^5.13.0"
 
 [tool.black]
 line-length = 120
@@ -53,6 +62,3 @@ profile = "black"
 [tool.mypy]
 ignore_missing_imports = true
 check_untyped_defs = true
-
-[tool.poetry.plugins."poetry.application.plugin"]
-poetry-audit-plugin = "poetry_audit_plugin.plugin:AuditApplicationPlugin"

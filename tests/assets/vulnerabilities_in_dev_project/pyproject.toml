@@ -1,0 +1,17 @@
+[project]
+name = "vulnerabilities-in-dev"
+version = "0.1.0"
+description = ""
+authors = [{ name = "opeco17", email = "opeco17@gmail.com" }]
+readme = "README.md"
+packages = [{include = "vulnerabilities_in_dev"}]
+requires-python = ">=3.12,<4.0"
+
+[dependency-groups]
+dev = [
+    "ansible-runner<1.2.0"
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
