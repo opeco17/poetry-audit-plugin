@@ -1,7 +1,6 @@
 from typing import Any, Dict, Iterator, List, Optional
 
 from packaging.specifiers import SpecifierSet
-from safety.auth import build_client_session
 from safety.safety import fetch_database
 
 from poetry_audit_plugin.errors import SafetyDBAccessError, SafetyDBSessionBuildError
@@ -43,7 +42,27 @@ def build_safety_db_session(
     proxy_host: Optional[str] = None,
     proxy_port: Optional[int] = None,
 ) -> Any:
+    """
+    Build the object that ``fetch_database`` consumes for the installed safety.
+
+    safety < 3.8 exposes ``safety.auth.build_client_session`` and ``fetch_database``
+    takes the returned session. safety >= 3.8 removed that symbol and reworked auth:
+    ``fetch_database`` now takes an ``Auth`` object produced by ``configure_auth_session``.
+    Both are supported so the plugin keeps working across its declared safety range
+    (>=3.0,<4.0). The import is done lazily here (not at module import time) so a safety
+    without ``build_client_session`` no longer breaks ``import poetry_audit_plugin``.
+    """
     # Ref: https://github.com/pyupio/safety/blob/3.0.1/safety/auth/cli_utils.py#L130
+    try:
+        from safety.auth import build_client_session  # removed in safety 3.8.0
+    except ImportError:
+        return _build_safety_auth(
+            key=key,
+            proxy_protocol=proxy_protocol,
+            proxy_host=proxy_host,
+            proxy_port=proxy_port,
+        )
+
     proxy_config: Optional[Dict[str, str]] = None
     if proxy_host and proxy_port and proxy_protocol:
         proxy_config = {"https": f"{proxy_protocol}://{proxy_host}:{str(proxy_port)}"}
@@ -54,6 +73,43 @@ def build_safety_db_session(
         raise SafetyDBSessionBuildError(str(e))
 
     return session
+
+
+def _build_safety_auth(
+    key: Optional[str] = None,
+    proxy_protocol: Optional[str] = None,
+    proxy_host: Optional[str] = None,
+    proxy_port: Optional[int] = None,
+) -> Any:
+    """
+    Build a safety ``Auth`` for safety >= 3.8, where ``build_client_session`` was removed.
+
+    ``configure_auth_session`` mutates a click context in place (it sets ``ctx.obj.auth``)
+    rather than returning a session, mirroring how safety's own CLI wires authentication.
+    With no ``key`` this yields an unauthenticated session that reads safety's free/open
+    mirror. The returned ``Auth`` owns the HTTP client, so it keeps working after the local
+    context is garbage-collected.
+    """
+    try:
+        import click
+        from safety.auth import configure_auth_session
+        from safety.models.obj import SafetyCLI
+
+        if proxy_host:
+            proxy_kwargs: Dict[str, Any] = {
+                "proxy_protocol": proxy_protocol,
+                "proxy_host": proxy_host,
+                "proxy_port": str(proxy_port) if proxy_port is not None else None,
+            }
+        else:
+            proxy_kwargs = {"proxy_protocol": None, "proxy_host": None, "proxy_port": None}
+
+        ctx = click.Context(click.Command("audit"))
+        ctx.obj = SafetyCLI()
+        configure_auth_session(ctx, key=key, **proxy_kwargs)
+        return ctx.obj.auth
+    except Exception as e:
+        raise SafetyDBSessionBuildError(str(e))
 
 
 def get_vulnerable_entry(pkg_name: str, spec: str, db_full: Dict[str, Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
